@@ -131,8 +131,8 @@ export default function VersionsPage() {
   const nextN = (kg?.latest ?? 0) + 1
 
   return (
-    <div className="flex min-h-full flex-col gap-5 px-4 py-6 md:px-8">
-      <PageHeader title="Riwayat versi" description={`Setiap versi = salinan penuh graph (${groupIdFor(id, 'vN')}). Tidak ada versi yang ditimpa.`}>
+    <div className="workspace-page flex min-h-full flex-col gap-6">
+      <PageHeader eyebrow="Riwayat graph" title="Riwayat versi" description={`Setiap versi = salinan penuh graph (${groupIdFor(id, 'vN')}). Tidak ada versi yang ditimpa.`}>
         <Select value={id} onValueChange={(v) => navigate(`/kg/${v}/versions`)}>
           <SelectTrigger className="w-56" aria-label="Knowledge graph">
             <SelectValue placeholder="Pilih KG" />
@@ -149,10 +149,10 @@ export default function VersionsPage() {
 
       {meta.error && <p className="bg-destructive-subtle text-destructive rounded-md px-4 py-2 text-sm">{meta.error}</p>}
 
-      <div className="flex flex-1 flex-col gap-5 lg:flex-row">
+      <div className="flex flex-1 flex-col gap-4 lg:flex-row">
         <Card className="flex shrink-0 flex-col gap-3 p-6 lg:w-80 xl:w-[440px]">
           <div className="space-y-1.5">
-            <CardTitle className="text-base">Versi ({versions.length})</CardTitle>
+            <CardTitle>Versi ({versions.length})</CardTitle>
             <CardDescription>Klik versi untuk dibandingkan dengan basis</CardDescription>
           </div>
           <ul className="space-y-2.5">
@@ -211,17 +211,17 @@ export default function VersionsPage() {
           </div>
 
           {!ready ? (
-            <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-10 text-center text-sm">
+            <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 rounded-md border border-dashed p-6 text-center text-sm">
               <Database className="size-6" />
               <p>{rows.length < 2 ? 'Butuh minimal dua versi (atau versi + draft) untuk dibandingkan.' : 'Pilih versi basis dan pembanding.'}</p>
             </div>
           ) : (
             <Tabs defaultValue="graph" className="flex min-h-0 flex-1 flex-col gap-4">
-              <TabsList className="h-9 self-start rounded-lg">
+              <TabsList className="self-start">
                 <TabsTrigger value="graph">Graph diff</TabsTrigger>
                 <TabsTrigger value="list">Daftar perubahan</TabsTrigger>
               </TabsList>
-              <TabsContent value="graph" className="h-80 overflow-hidden rounded-lg border lg:h-auto lg:min-h-80 lg:flex-1">
+              <TabsContent value="graph" className="h-80 overflow-hidden rounded-md border lg:h-auto lg:min-h-80 lg:flex-1">
                 {graph && graph.nodes.length ? (
                   <GraphCanvas data={graph} dark={dark} edgeLabels camera={{ ratio: 1.15 }} />
                 ) : (

@@ -57,15 +57,15 @@ export default function ExtractionPage() {
   const st = j ? STATUS[j.status] : null
 
   return (
-    <div className="flex min-h-full flex-col gap-5 px-4 py-6 md:px-8">
-      <PageHeader title="Ekstraksi" description={`Graphiti menulis ke draft ${groupIdFor(kg || 'kg', 'draft')}; kuota LLM diatur otomatis.`}>
+    <div className="workspace-page flex min-h-full flex-col gap-6">
+      <PageHeader eyebrow="Impor percakapan" title="Ekstraksi" description={`Graphiti menulis ke draft ${groupIdFor(kg || 'kg', 'draft')}; kuota LLM diatur otomatis.`}>
         <Stepper active={2} />
       </PageHeader>
 
       {!jobId && <p className="bg-warning-subtle text-warning rounded-md px-4 py-2 text-sm">Tidak ada job. Mulai dari Upload chat.</p>}
       {job.error && <p className="bg-destructive-subtle text-destructive rounded-md px-4 py-2 text-sm">{job.error}</p>}
 
-      <div className="flex flex-1 flex-col gap-5 lg:flex-row">
+      <div className="flex flex-1 flex-col gap-4 lg:flex-row">
         <Card className="flex min-w-0 flex-1 flex-col gap-5 p-6">
           <div className="flex items-center gap-3">
             <span className="bg-muted rounded-full p-2">
@@ -80,7 +80,7 @@ export default function ExtractionPage() {
               )}
             </span>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base">{j?.status === 'done' ? 'Ekstraksi selesai' : 'Mengekstrak entitas & relasi…'}</CardTitle>
+              <CardTitle>{j?.status === 'done' ? 'Ekstraksi selesai' : 'Mengekstrak entitas & relasi…'}</CardTitle>
               <CardDescription>{j ? `job ${j.id} · dibuat ${when(j.created_at)}` : 'Memuat…'}</CardDescription>
             </div>
             {st && <Badge variant={st.variant}>{st.label}</Badge>}
@@ -116,14 +116,14 @@ export default function ExtractionPage() {
 
           <div className="flex min-h-48 flex-1 flex-col gap-2">
             <p className="text-sm font-semibold">Log</p>
-            <ol className="bg-muted max-h-80 flex-1 space-y-1.5 overflow-y-auto rounded-lg p-4 font-mono text-xs">
+            <ol className="bg-code text-on-code max-h-80 flex-1 space-y-1.5 overflow-y-auto rounded-md px-5 py-4 font-mono text-sm leading-5 wrap-anywhere">
               {(j?.log ?? []).map((line, i, all) => (
-                <li key={i} className={cn(line.includes('gagal') ? 'text-destructive' : i === all.length - 1 && active ? 'text-foreground' : 'text-muted-foreground')}>
+                <li key={i} className={cn(line.includes('gagal') ? 'text-code-error' : i === all.length - 1 && active ? 'text-on-code' : 'text-on-code/80')}>
                   {line}
                 </li>
               ))}
               {j?.last_episode?.edges.map((e) => (
-                <li key={e} className="text-success">
+                <li key={e} className="text-code-success">
                   + {e}
                 </li>
               ))}
@@ -169,10 +169,10 @@ export default function ExtractionPage() {
 
         <Card className="flex h-[420px] shrink-0 flex-col gap-3 p-6 lg:h-auto lg:w-80 xl:w-[460px]">
           <div className="space-y-1.5">
-            <CardTitle className="text-base">Live preview</CardTitle>
+            <CardTitle>Live preview</CardTitle>
             <CardDescription>Isi draft, diperbarui tiap episode selesai</CardDescription>
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-md border">
             {graph.nodes.length ? (
               <GraphCanvas data={graph} dark={dark} edgeLabels camera={{ ratio: 1.15 }} />
             ) : (

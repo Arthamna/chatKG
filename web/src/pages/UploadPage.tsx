@@ -77,16 +77,16 @@ export default function UploadPage() {
   const others = preview?.participants.filter((p) => p !== owner.trim()) ?? []
 
   return (
-    <div className="flex min-h-full flex-col gap-5 px-4 py-6 md:px-8">
-      <PageHeader title="Upload chat" description="Isi mapping peserta, lalu unggah chat. AI akan memetakan tipe entitas dan relasi secara otomatis.">
+    <div className="workspace-page flex min-h-full flex-col gap-6">
+      <PageHeader eyebrow="Impor percakapan" title="Upload chat" description="Isi mapping peserta, lalu unggah chat. AI akan memetakan tipe entitas dan relasi secara otomatis.">
         <Stepper active={0} />
       </PageHeader>
 
-      <div className="flex flex-1 flex-col gap-5 lg:flex-row">
+      <div className="flex flex-1 flex-col gap-4 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-5">
           <Card className="space-y-4 p-6">
             <div className="space-y-1.5">
-              <CardTitle className="text-base">Unggah export chat</CardTitle>
+              <CardTitle>Unggah export chat</CardTitle>
               <CardDescription>WhatsApp (iOS) “Ekspor chat” tanpa media · file .txt</CardDescription>
             </div>
             <FileDropzone
@@ -98,7 +98,7 @@ export default function UploadPage() {
               }}
             />
             {file && (
-              <div className="flex items-center gap-3 rounded-lg border p-3">
+              <div className="flex items-center gap-3 rounded-md border p-3">
                 <FileText className="text-muted-foreground size-5 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{file.name}</p>
@@ -125,7 +125,7 @@ export default function UploadPage() {
             <Card className="space-y-3 p-6">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="space-y-1.5">
-                  <CardTitle className="text-base">Preview episode</CardTitle>
+                  <CardTitle>Preview episode</CardTitle>
                   <CardDescription>
                     Format tanggal {preview.date_order === 'MDY' ? 'M/D/YY' : 'D/M/YY'} · {when(preview.date_from)} – {when(preview.date_to)} ({preview.tz})
                   </CardDescription>
@@ -137,14 +137,14 @@ export default function UploadPage() {
               </p>
               <ol className="space-y-3">
                 {preview.episodes.map((ep, i) => (
-                  <li key={ep.name} className="rounded-lg border p-3">
+                  <li key={ep.name} className="rounded-md border p-3">
                     <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
                       <Badge variant="outline">#{i + 1}</Badge>
                       <span className="text-muted-foreground">
                         {when(ep.start)} · {ep.lines}/{ep.messages} pesan dikirim ke LLM
                       </span>
                     </div>
-                    <pre className="bg-muted overflow-x-auto rounded-md p-2.5 font-mono text-xs whitespace-pre-wrap">{ep.body}</pre>
+                    <pre className="bg-code text-on-code overflow-x-auto rounded-md px-5 py-4 font-mono text-sm leading-5 whitespace-pre-wrap wrap-anywhere">{ep.body}</pre>
                   </li>
                 ))}
               </ol>
@@ -154,7 +154,7 @@ export default function UploadPage() {
 
         <Card className="flex shrink-0 flex-col gap-4 p-6 lg:w-80 xl:w-[380px]">
           <div className="space-y-1.5">
-            <CardTitle className="text-base">Tujuan & mapping</CardTitle>
+            <CardTitle>Tujuan & mapping</CardTitle>
             <CardDescription>Ke KG mana hasil ekstraksi masuk</CardDescription>
           </div>
           <SelectField
@@ -174,7 +174,7 @@ export default function UploadPage() {
             <Textarea value={aliases} onChange={(e) => setAliases(e.target.value)} rows={2} placeholder={'Leon TC 24=Leon\nsatu per baris'} />
           </Field>
           {others.length > 0 && <p className="text-muted-foreground -mt-2 text-xs">Nama di file: {others.join(', ')}</p>}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 min-[480px]:grid-cols-2">
             <Field label="Zona waktu">
               <Input value={tz} onChange={(e) => setTz(e.target.value)} className="w-full" />
             </Field>
@@ -194,7 +194,7 @@ export default function UploadPage() {
               <RefreshCw /> Terapkan mapping
             </Button>
           )}
-          <div className="flex gap-3 rounded-lg border p-4">
+          <div className="flex gap-3 rounded-md border p-4">
             <CircleAlert className="mt-0.5 size-4 shrink-0" />
             <div className="space-y-1">
               <p className="text-sm font-medium">Versi lama aman</p>
@@ -203,7 +203,7 @@ export default function UploadPage() {
               </p>
             </div>
           </div>
-          <div className="bg-card mt-auto flex justify-end gap-2 max-lg:sticky max-lg:bottom-0 max-lg:py-3">
+          <div className="bg-card mt-auto flex flex-wrap justify-end gap-2 max-lg:sticky max-lg:bottom-0 max-lg:py-3">
             <Button variant="outline" size="sm" onClick={() => navigate('/kg')}>
               Batal
             </Button>

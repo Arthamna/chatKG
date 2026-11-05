@@ -25,10 +25,10 @@ interface DraftBarProps {
 export default function DraftBar(p: DraftBarProps) {
   const isDraft = p.version === 'draft'
   return (
-    <div className="bg-background flex flex-wrap items-center gap-2.5 border-b px-4 py-2">
+    <div className="bg-card border-divider flex flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
       <Network className="text-muted-foreground hidden size-4 sm:block" />
       <Select value={p.kg} onValueChange={p.onKgChange}>
-        <SelectTrigger className="w-40 md:w-48" aria-label="Knowledge graph">
+        <SelectTrigger className="min-w-0 flex-1 sm:w-40 sm:flex-none md:w-48" aria-label="Knowledge graph">
           <SelectValue placeholder="Pilih KG" />
         </SelectTrigger>
         <SelectContent>
@@ -41,8 +41,8 @@ export default function DraftBar(p: DraftBarProps) {
       </Select>
       <History className="text-muted-foreground hidden size-4 sm:block" />
       <Select value={p.version} onValueChange={p.onVersionChange}>
-        <SelectTrigger className="w-44 md:w-56" aria-label="Versi">
-          <SelectValue placeholder="Versi" />
+        <SelectTrigger className="min-w-0 flex-1 sm:w-44 sm:flex-none md:w-52" aria-label="Versi">
+          <SelectValue placeholder="Versi">{isDraft ? 'Draft' : p.version || undefined}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {p.hasDraft && <SelectItem value="draft">draft (bisa diedit)</SelectItem>}
@@ -54,9 +54,13 @@ export default function DraftBar(p: DraftBarProps) {
           ))}
         </SelectContent>
       </Select>
-      {isDraft && <Badge variant={p.changes ? 'warning' : 'secondary'}>Draft · {p.changes} perubahan</Badge>}
+      {isDraft && (
+        <div className="max-[479px]:w-full">
+          <Badge variant={p.changes ? 'warning' : 'secondary'}>Draft · {p.changes} perubahan</Badge>
+        </div>
+      )}
 
-      <div className="ml-auto flex gap-2">
+      <div className="ml-auto flex flex-wrap justify-end gap-2">
         {isDraft && !p.readOnly ? (
           <>
             <Button variant="outline" size="sm" asChild>

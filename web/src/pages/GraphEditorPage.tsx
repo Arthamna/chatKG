@@ -14,6 +14,7 @@ import GraphControls from '@/components/graph/GraphControls'
 import GraphSearch from '@/components/graph/GraphSearch'
 import Legend from '@/components/graph/Legend'
 import PropertiesView from '@/components/graph/PropertiesView'
+import PageHeader from '@/components/layout/PageHeader'
 import Button from '@/components/ui/Button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/Sheet'
@@ -126,86 +127,93 @@ export default function GraphEditorPage() {
   )
 
   return (
-    <div className="flex h-full flex-col">
-      <DraftBar
-        kgs={kgs.data ?? []}
-        kg={id}
-        onKgChange={(v) => navigate(`/kg/${v}/graph`)}
-        versions={meta.data?.versions ?? []}
-        hasDraft={!!kg?.has_draft}
-        version={version ?? ''}
-        onVersionChange={setVersion}
-        changes={changeCount}
-        readOnly={readOnly}
-        canEdit={isMd && !!kg}
-        onStartEdit={startEdit}
-        onDiscard={() => setDialog('discard')}
-        onCommit={() => setDialog('commit')}
+    <div className="workspace-page flex h-full min-h-[40rem] flex-col gap-4 pb-6">
+      <PageHeader
+        eyebrow="Eksplorasi graph"
+        title="Graph Editor"
+        description={kg ? `Telusuri entitas dan relasi di ${kg.name}.` : 'Telusuri entitas dan relasi dalam knowledge graph.'}
       />
+      <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border">
+        <DraftBar
+          kgs={kgs.data ?? []}
+          kg={id}
+          onKgChange={(v) => navigate(`/kg/${v}/graph`)}
+          versions={meta.data?.versions ?? []}
+          hasDraft={!!kg?.has_draft}
+          version={version ?? ''}
+          onVersionChange={setVersion}
+          changes={changeCount}
+          readOnly={readOnly}
+          canEdit={isMd && !!kg}
+          onStartEdit={startEdit}
+          onDiscard={() => setDialog('discard')}
+          onCommit={() => setDialog('commit')}
+        />
 
-      {!isMd && (
-        <div className="bg-warning-subtle text-warning flex items-center gap-2 px-4 py-2 text-xs font-medium">
-          <MonitorSmartphone className="size-4 shrink-0" /> Gunakan layar yang lebih besar untuk mengedit. Di sini hanya bisa geser & zoom.
-        </div>
-      )}
-      {isMd && version && version !== 'draft' && (
-        <div className="bg-muted text-muted-foreground flex items-center gap-2 px-4 py-2 text-xs font-medium">
-          <Database className="size-4 shrink-0" /> {version} sudah di-commit (read-only, {groupIdFor(id, version)}). Klik “Edit” untuk mengubah lewat draft.
-        </div>
-      )}
-
-      <div className="relative min-h-0 flex-1">
-        {view.loading && !view.data && (
-          <div className="bg-background/80 absolute inset-0 z-20 flex items-center justify-center">
-            <LoaderCircle className="size-6 animate-spin" />
+        {!isMd && (
+          <div className="bg-warning-subtle text-warning flex items-center gap-2 px-4 py-2 text-xs font-medium">
+            <MonitorSmartphone className="size-4 shrink-0" /> Gunakan layar yang lebih besar untuk mengedit. Di sini hanya bisa geser & zoom.
           </div>
         )}
-        {view.data && graph.nodes.length === 0 && (
-          <div className="text-muted-foreground absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 text-center text-sm">
-            <p className="text-foreground font-medium">Graph {version} masih kosong</p>
-            <p>Upload chat untuk mengisi KG ini.</p>
-            <Button size="sm" asChild>
-              <Link to={`/upload?kg=${id}`}>
-                <Upload /> Upload chat
-              </Link>
-            </Button>
+        {isMd && version && version !== 'draft' && (
+          <div className="bg-muted text-muted-foreground flex items-center gap-2 px-4 py-2 text-xs font-medium wrap-anywhere">
+            <Database className="size-4 shrink-0" /> {version} sudah di-commit (read-only, {groupIdFor(id, version)}). Klik “Edit” untuk mengubah lewat draft.
           </div>
         )}
-        <GraphCanvas
-          data={graph}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          typeFilter={typeFilter}
-          dark={dark}
-          edgeLabels={edgeLabels}
-          camera={isLg && selected ? { x: 0.62, ratio: 1.2 } : { ratio: 1.1 }}
-        >
-          <div className="absolute top-2 left-2 z-10 flex flex-wrap items-start gap-2">
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="bg-background w-40" aria-label="Filter tipe">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua tipe (*)</SelectItem>
-                {typesOf(graph).map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <GraphSearch nodes={graph.nodes} onSelect={setSelectedId} />
-          </div>
 
-          <GraphControls className="absolute bottom-2 left-2 z-10" onToggleLegend={() => setLegendOpen((o) => !o)} onToggleEdgeLabels={() => setEdgeLabels((o) => !o)} />
-          {legendOpen && graph.nodes.length > 0 && <Legend types={typesOf(graph)} showDraft={version === 'draft'} className="absolute right-2 bottom-2 z-10" />}
-
-          {isLg && selected && (
-            <div className="bg-background/90 absolute top-2 right-2 z-10 max-h-[calc(100%-1rem)] w-[300px] overflow-y-auto rounded-lg border-2 p-2.5 shadow backdrop-blur-lg xl:w-[340px]">
-              {properties}
+        <div className="relative min-h-0 flex-1">
+          {view.loading && !view.data && (
+            <div className="bg-background/80 absolute inset-0 z-20 flex items-center justify-center">
+              <LoaderCircle className="size-6 animate-spin" />
             </div>
           )}
-        </GraphCanvas>
+          {view.data && graph.nodes.length === 0 && (
+            <div className="text-muted-foreground absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 text-center text-sm">
+              <p className="text-foreground font-medium">Graph {version} masih kosong</p>
+              <p>Upload chat untuk mengisi KG ini.</p>
+              <Button size="sm" asChild>
+                <Link to={`/upload?kg=${id}`}>
+                  <Upload /> Upload chat
+                </Link>
+              </Button>
+            </div>
+          )}
+          <GraphCanvas
+            data={graph}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            typeFilter={typeFilter}
+            dark={dark}
+            edgeLabels={edgeLabels}
+            camera={isLg && selected ? { x: 0.62, ratio: 1.2 } : { ratio: 1.1 }}
+          >
+            <div className="absolute inset-x-2 top-2 z-10 grid grid-cols-2 gap-2 sm:right-auto sm:flex">
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="min-w-0 sm:w-40" aria-label="Filter tipe">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua tipe</SelectItem>
+                  {typesOf(graph).map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <GraphSearch nodes={graph.nodes} onSelect={setSelectedId} />
+            </div>
+
+            <GraphControls className="absolute bottom-2 left-2 z-10" onToggleLegend={() => setLegendOpen((o) => !o)} onToggleEdgeLabels={() => setEdgeLabels((o) => !o)} />
+            {legendOpen && graph.nodes.length > 0 && <Legend types={typesOf(graph)} showDraft={version === 'draft'} className="absolute right-2 bottom-14 z-10 sm:bottom-2" />}
+
+            {isLg && selected && (
+              <div className="bg-card absolute top-2 right-2 z-10 max-h-[calc(100%-1rem)] w-[300px] overflow-y-auto rounded-md border p-3 xl:w-[340px]">
+                {properties}
+              </div>
+            )}
+          </GraphCanvas>
+        </div>
       </div>
 
       {!isLg && (

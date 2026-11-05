@@ -23,7 +23,7 @@ interface ChangeRowProps {
 export default function ChangeRow({ change, busy, onReject, onKeep }: ChangeRowProps) {
   const kind = KIND[change.kind]
   return (
-    <li className="flex items-center gap-3 rounded-lg border p-3">
+    <li className="flex items-center gap-3 rounded-md border p-3">
       <Badge variant={kind.variant} className="shrink-0">
         {kind.label}
       </Badge>

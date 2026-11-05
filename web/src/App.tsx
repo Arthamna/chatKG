@@ -15,17 +15,27 @@ import AskPage from '@/pages/AskPage'
 function Shell() {
   const { theme, toggle } = useTheme()
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-dvh flex-col">
       <AppHeader theme={theme} onToggleTheme={toggle} />
       <main className="min-h-0 flex-1 overflow-y-auto">
         <Outlet />
       </main>
-      <Toaster theme={theme} position="top-center" offset={56} richColors closeButton />
+      <Toaster
+        theme={theme}
+        position="top-center"
+        offset={56}
+        closeButton
+        toastOptions={{
+          classNames: {
+            toast: 'bg-card! text-foreground! border-border! rounded-md! shadow-none!',
+            description: 'text-body-text!'
+          }
+        }}
+      />
     </div>
   )
 }
 
-/** Routes — design/mockup-spec.md § Sections. */
 export default function App() {
   return (
     <BrowserRouter>

@@ -53,12 +53,12 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col gap-5 px-4 py-6 md:px-8">
-      <PageHeader title="Review perubahan" description="Tolak yang salah, selesaikan konflik, lalu bekukan draft menjadi versi baru.">
+    <div className="workspace-page flex min-h-full flex-col gap-6">
+      <PageHeader eyebrow="Impor percakapan" title="Review perubahan" description="Tolak yang salah, selesaikan konflik, lalu bekukan draft menjadi versi baru.">
         <Stepper active={2} />
       </PageHeader>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border p-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-4">
         <Check className="text-success size-4" />
         <span className="text-sm font-medium">
           Draft {groupIdFor(kg || 'kg', 'draft')} vs {review.data?.base ? `v${review.data.base}` : 'kosong'}
@@ -71,10 +71,10 @@ export default function ReviewPage() {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col gap-5 lg:flex-row">
+      <div className="flex flex-1 flex-col gap-4 lg:flex-row">
         <Card className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:p-6">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="max-w-full overflow-x-auto">
-            <TabsList className="h-9 rounded-lg">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+            <TabsList className="h-auto flex-wrap justify-start rounded-md sm:rounded-full">
               <TabsTrigger value="all">Semua {items.length}</TabsTrigger>
               <TabsTrigger value="node">Node {s.node ?? 0}</TabsTrigger>
               <TabsTrigger value="edge">Relasi {s.edge ?? 0}</TabsTrigger>
@@ -100,10 +100,10 @@ export default function ReviewPage() {
         <div className="flex shrink-0 flex-col gap-5 lg:w-80 xl:w-[420px]">
           <Card className="flex h-[360px] flex-col gap-3 p-6 lg:h-auto lg:flex-1">
             <div className="space-y-1.5">
-              <CardTitle className="text-base">Preview draft</CardTitle>
+              <CardTitle>Preview draft</CardTitle>
               <CardDescription>Cincin hijau = baru · oranye = diubah · garis abu = fakta usang</CardDescription>
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
+            <div className="min-h-0 flex-1 overflow-hidden rounded-md border">
               {graph.nodes.length ? (
                 <GraphCanvas data={graph} dark={dark} edgeLabels camera={{ ratio: 1.15 }} />
               ) : (
@@ -114,7 +114,7 @@ export default function ReviewPage() {
 
           <Card className="bg-card space-y-3 p-6 max-lg:sticky max-lg:bottom-0">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Siap di-commit</CardTitle>
+              <CardTitle>Siap di-commit</CardTitle>
               <Badge variant="outline">
                 {info.data?.latest ? `v${info.data.latest}` : 'kosong'} → {next}
               </Badge>
@@ -127,7 +127,7 @@ export default function ReviewPage() {
                 <CircleAlert className="size-4 shrink-0" /> {conflicts} konflik belum diselesaikan; tetap ikut ter-commit bila dilanjutkan.
               </p>
             )}
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => navigate(`/kg/${kg}/graph?version=draft`)}>
                 Edit di Graph Editor
               </Button>

@@ -34,8 +34,8 @@ export default function VersionListItem({ version, latest, role, onSelect }: Ver
         onClick={onSelect}
         aria-pressed={!!role}
         className={cn(
-          'focus-visible:ring-ring flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none',
-          role ? 'border-primary bg-muted' : 'hover:bg-muted/50'
+          'focus-visible:ring-ring flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none',
+          role ? 'border-muted-foreground bg-muted' : 'hover:bg-muted/50'
         )}
       >
         <span className="bg-background flex h-8 w-13 shrink-0 items-center justify-center rounded-md border text-xs font-semibold">{version.title}</span>

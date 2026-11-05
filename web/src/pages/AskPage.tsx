@@ -5,6 +5,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import MessageList, { type ChatMessage } from '@/components/ask/MessageList'
 import QueryComposer from '@/components/ask/QueryComposer'
 import QuerySettings, { type AskSettings } from '@/components/ask/QuerySettings'
+import PageHeader from '@/components/layout/PageHeader'
 import Button from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/Sheet'
@@ -78,32 +79,43 @@ export default function AskPage() {
   )
 
   return (
-    <div className="flex h-full gap-4 p-4">
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <div className="flex items-center justify-between gap-2 lg:hidden">
-          <p className="text-muted-foreground truncate text-sm">{scope}</p>
+    <div className="workspace-page flex h-full min-h-[42rem] flex-col gap-4 pb-6">
+      <PageHeader
+        eyebrow="Tanya graph"
+        title="Ask KG"
+        description="Ajukan pertanyaan dan telusuri fakta sumber di knowledge graph."
+      >
+        <div className="lg:hidden">
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" size="sm">
                 <SlidersHorizontal /> Parameter
               </Button>
             </SheetTrigger>
-            <SheetContent>
+            <SheetContent className="pt-6">
               <SheetTitle className="sr-only">Parameter</SheetTitle>
               <SheetDescription className="sr-only">Sumber dan cara retrieval</SheetDescription>
               {settingsPanel}
             </SheetContent>
           </Sheet>
         </div>
-        {health.data && !health.data.llm && (
-          <p className="bg-warning-subtle text-warning rounded-md px-3 py-2 text-sm">API key LLM belum diisi di backend; periksa konfigurasi provider.</p>
-        )}
-        <div className="bg-background min-h-0 flex-1 overflow-y-auto rounded-lg border">
-          <MessageList messages={messages} loading={loading} scope={scope} onSuggest={ask} />
-        </div>
-        <QueryComposer placeholder={messages.length ? 'Tanya lanjutan…' : `Tanyakan sesuatu tentang ${scope}…`} disabled={loading || !settings.kg} onSend={ask} />
+      </PageHeader>
+      <div className="flex min-h-0 flex-1 gap-4">
+        <Card className="flex min-w-0 flex-1 flex-col">
+          <div className="bg-muted border-divider flex items-center gap-2 rounded-t-md border-b px-4 py-3 text-sm sm:px-6">
+            <span className="text-body-text shrink-0 font-semibold">Sumber</span>
+            <span className="text-muted-foreground min-w-0 truncate" title={scope}>{scope}</span>
+          </div>
+          {health.data && !health.data.llm && (
+            <p className="bg-warning-subtle text-warning m-3 rounded-md px-3 py-2 text-sm">API key LLM belum diisi di backend; periksa konfigurasi provider.</p>
+          )}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <MessageList messages={messages} loading={loading} scope={scope} onSuggest={ask} />
+          </div>
+          <QueryComposer placeholder={messages.length ? 'Tanya lanjutan…' : `Tanyakan sesuatu tentang ${scope}…`} disabled={loading || !settings.kg} onSend={ask} />
+        </Card>
+        <Card className="hidden w-80 shrink-0 overflow-y-auto p-6 lg:block">{settingsPanel}</Card>
       </div>
-      <Card className="hidden w-[300px] shrink-0 overflow-y-auto p-4 lg:block">{settingsPanel}</Card>
     </div>
   )
 }

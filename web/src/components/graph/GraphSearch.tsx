@@ -27,7 +27,7 @@ export default function GraphSearch({ nodes, onSelect }: GraphSearchProps) {
 
   return (
     <form
-      className="relative"
+      className="relative min-w-0"
       role="search"
       onSubmit={(e) => {
         e.preventDefault()
@@ -40,7 +40,7 @@ export default function GraphSearch({ nodes, onSelect }: GraphSearchProps) {
         onChange={(e) => setQ(e.target.value)}
         placeholder="Cari node…"
         aria-label="Cari node"
-        className="bg-background w-48 pl-9 md:w-60"
+        className="w-full pl-9 sm:w-48"
       />
     </form>
   )

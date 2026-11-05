@@ -38,18 +38,18 @@ export interface GraphData {
   edges: GraphEdgeData[]
 }
 
-/** Colors per ontology type, using the LightRAG palette (utils/graphColor.ts). */
+/** Keep ontology types visually distinct within the workspace palette. */
 export const TYPE_COLORS: Record<string, string> = {
-  Person: '#4169E1',
-  Organization: '#00CC00',
-  Course: '#E3493B',
-  Task: '#4421AF',
-  Tool: '#CF6D17',
-  Resource: '#00BFA0',
-  Event: '#00BFA0',
-  Entity: '#B0B0B0'
+  Person: '#2c84e0',
+  Organization: '#2c8c66',
+  Course: '#cd4239',
+  Task: '#7c44a6',
+  Tool: '#b17816',
+  Resource: '#1078a3',
+  Event: '#a7557b',
+  Entity: '#9b9c92'
 }
-const FALLBACK = ['#84a3e1', '#5a2c6d', '#2F4F4F', '#003366', '#9b3a31', '#00CED1', '#b300b3', '#0f705d']
+const FALLBACK = Object.values(TYPE_COLORS)
 
 export function typeColor(type: string): string {
   if (TYPE_COLORS[type]) return TYPE_COLORS[type]

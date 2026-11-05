@@ -10,13 +10,12 @@ interface GraphControlsProps {
   className?: string
 }
 
-/** LightRAG GraphViewer bottom-left column: layout · zoom ± · fullscreen · legend · settings. */
 export default function GraphControls({ onToggleLegend, onToggleEdgeLabels, className }: GraphControlsProps) {
   const { zoomIn, zoomOut, reset } = useCamera({ duration: 200, factor: 1.5 })
   const { toggle } = useFullScreen()
 
   return (
-    <div className={cn('bg-background/60 flex flex-col rounded-xl border-2 p-0.5 backdrop-blur-lg', className)}>
+    <div className={cn('bg-card flex rounded-md border p-0.5 sm:flex-col', className)}>
       <Button variant="ghost" size="icon" tooltip="Atur ulang tampilan" side="right" onClick={() => reset()}>
         <LayoutGrid />
       </Button>

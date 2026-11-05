@@ -34,8 +34,8 @@ export default function QuerySettings({ value, onChange, kgs, versions, hasDraft
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="space-y-1">
-        <p className="font-semibold">Parameter</p>
-        <p className="text-muted-foreground text-sm">Sumber & cara retrieval</p>
+        <h2 className="text-lg leading-7 font-semibold">Parameter</h2>
+        <p className="text-body-text text-sm">Sumber & cara retrieval</p>
       </div>
       <SelectField label="Knowledge graph" value={value.kg} onChange={(v) => onChange({ ...value, kg: v, version: 'latest' })} options={kgs.map((k) => ({ value: k.id, label: k.name }))} />
       <SelectField label="Versi" value={value.version} onChange={(v) => set('version', v)} options={versionOptions} />
@@ -47,7 +47,7 @@ export default function QuerySettings({ value, onChange, kgs, versions, hasDraft
       <label className="flex items-center gap-2 text-sm">
         <Checkbox checked={value.includeInvalid} onCheckedChange={(v) => set('includeInvalid', v === true)} /> Sertakan fakta yang sudah invalid
       </label>
-      <p className="bg-muted text-muted-foreground mt-auto flex gap-2 rounded-md p-2.5 text-xs">
+      <p className="bg-muted text-body-text border-divider mt-auto flex gap-2 rounded-md border p-3 text-[13px] wrap-anywhere">
         <History className="size-4 shrink-0" /> Ganti versi = jawaban dari snapshot itu ({value.kg ? groupIdFor(value.kg, resolved) : '—'}). Point-in-time memakai fakta yang berlaku pada saat itu saja.
       </p>
     </div>

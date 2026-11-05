@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Copy, LoaderCircle, MessageSquare, Network, Sparkles } from 'lucide-react'
+import { Copy, LoaderCircle, Network } from 'lucide-react'
 import { toast } from 'sonner'
 
 import GraphCanvas from '@/components/graph/GraphCanvas'
+import WorkspaceMascot, { WorkspaceMark } from '@/components/layout/WorkspaceMascot'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import { useIsDark } from '@/hooks/useIsDark'
@@ -22,7 +23,7 @@ export const SUGGESTIONS = ['Tugas apa saja yang dibahas?', 'Siapa saja yang ter
 export function ChatBubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <p className="bg-primary text-primary-foreground max-w-[80%] rounded-lg px-3.5 py-2.5 text-sm">{text}</p>
+      <p className="bg-secondary text-foreground max-w-[85%] rounded-md px-4 py-2.5 text-sm wrap-anywhere">{text}</p>
     </div>
   )
 }
@@ -39,22 +40,20 @@ export function AssistantMessage({ kg, kgLabel, result }: { kg: string; kgLabel:
   )
   return (
     <div className="flex gap-2.5">
-      <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-full">
-        <Sparkles className="size-4" />
-      </span>
-      <div className="bg-muted min-w-0 flex-1 space-y-3 rounded-lg p-3.5">
-        <p className="text-sm whitespace-pre-wrap">{result.answer}</p>
+      <WorkspaceMark />
+      <div className="bg-muted border-divider min-w-0 flex-1 space-y-3 rounded-md border p-3 sm:p-4">
+        <p className="text-body-text text-sm leading-5 whitespace-pre-wrap wrap-anywhere">{result.answer}</p>
         {graph.nodes.length > 0 && (
           <div className="bg-background h-44 overflow-hidden rounded-md border">
             <GraphCanvas data={graph} dark={dark} edgeLabels camera={{ ratio: 1.2 }} />
           </div>
         )}
         {result.references.length > 0 && (
-          <ol className="space-y-1.5 border-t pt-2.5">
+          <ol className="border-divider space-y-1.5 border-t pt-3">
             {result.references.map((r) => (
               <li key={r.n} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                <span className="text-primary font-semibold">[{r.n}]</span>
-                <span className="font-medium">{r.fact}</span>
+                <span className="text-link font-semibold">[{r.n}]</span>
+                <span className="font-medium wrap-anywhere">{r.fact}</span>
                 <span className="text-muted-foreground">
                   {r.invalid_at ? `berlaku ${when(r.valid_at)} – ${when(r.invalid_at)}` : `berlaku sejak ${when(r.valid_at)}`}
                 </span>
@@ -87,7 +86,7 @@ export function AssistantMessage({ kg, kgLabel, result }: { kg: string; kgLabel:
             <Copy className="text-muted-foreground" />
           </Button>
           <Button variant="ghost" size="sm" asChild>
-            <Link to={`/kg/${kg}/graph?version=${result.version}`}>
+            <Link to={`/kg/${kg}/graph?version=${result.version}`} className="whitespace-normal">
               <Network /> Buka di Graph Editor
             </Link>
           </Button>
@@ -107,15 +106,13 @@ interface MessageListProps {
 export default function MessageList({ messages, loading, scope, onSuggest }: MessageListProps) {
   if (!messages.length) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <span className="bg-muted rounded-full p-3.5">
-          <MessageSquare className="text-muted-foreground size-7" />
-        </span>
-        <p className="text-lg font-semibold">Tanya knowledge graph</p>
-        <p className="text-muted-foreground text-sm">Jawaban hanya diambil dari {scope} — lengkap dengan fakta sumber.</p>
+      <div className="flex min-h-full flex-col items-center justify-center gap-3 p-4 text-center sm:p-6">
+        <WorkspaceMascot className="h-auto w-36" />
+        <h2 className="text-lg leading-7 font-semibold">Tanya knowledge graph</h2>
+        <p className="text-body-text text-sm wrap-anywhere">Jawaban diambil dari {scope}, lengkap dengan fakta sumber.</p>
         <div className="flex flex-wrap justify-center gap-2">
           {SUGGESTIONS.map((s) => (
-            <Button key={s} variant="outline" size="sm" onClick={() => onSuggest(s)}>
+            <Button key={s} variant="secondary" size="sm" className="h-auto min-h-9 rounded-full py-1.5 whitespace-normal" onClick={() => onSuggest(s)}>
               {s}
             </Button>
           ))}

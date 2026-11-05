@@ -20,10 +20,10 @@ type Row = [label: string, value: string, editKey?: string]
 
 function Rows({ rows, onEdit }: { rows: Row[]; onEdit?: (k: string) => void }) {
   return (
-    <div className="bg-primary/5 space-y-0.5 rounded-md p-1.5">
+    <div className="bg-muted border-divider divide-divider divide-y rounded-md border">
       {rows.map(([k, v, editKey]) => (
-        <div key={k + v} className="hover:bg-primary/10 flex items-start gap-2 rounded px-1 py-0.5 text-xs">
-          <span className="text-primary/60 w-20 shrink-0 break-words">{k}</span>
+        <div key={k + v} className="flex items-start gap-2 px-2 py-1.5 text-[13px]">
+          <span className="text-body-text w-20 shrink-0 wrap-anywhere">{k}</span>
           <span className="min-w-0 flex-1 break-words">{v}</span>
           {editKey && onEdit && (
             <Button variant="ghost" size="icon" className="-my-1 size-6" tooltip={`Edit ${k}`} onClick={() => onEdit(editKey)}>
@@ -38,7 +38,6 @@ function Rows({ rows, onEdit }: { rows: Row[]; onEdit?: (k: string) => void }) {
 
 const show = (v: unknown) => (typeof v === 'string' ? v : v == null ? '—' : JSON.stringify(v))
 
-/** LightRAG PropertiesView: Node (blue) · Properties (amber) · Relations (emerald). */
 export default function PropertiesView({ node, graph, groupId, readOnly, onEditProperty, onMerge, onDelete, className }: PropertiesViewProps) {
   const edges = graph.edges.filter((e) => e.source === node.id || e.target === node.id)
   const relations: Row[] = edges.map((e) => {
@@ -57,7 +56,7 @@ export default function PropertiesView({ node, graph, groupId, readOnly, onEditP
   return (
     <div className={cn('flex flex-col gap-2 text-xs', className)}>
       <div className="flex items-center gap-1.5">
-        <h3 className="text-info pl-1 text-sm font-bold tracking-wide">Node</h3>
+        <h3 className="pl-1 text-sm font-bold">Node</h3>
         {node.mark === 'add' && <Badge variant="success">baru</Badge>}
         {node.mark === 'mod' && <Badge variant="warning">diubah</Badge>}
         <div className="ml-auto flex gap-1.5">
@@ -84,14 +83,14 @@ export default function PropertiesView({ node, graph, groupId, readOnly, onEditP
           ['group_id', groupId]
         ]}
       />
-      <h3 className="text-warning pl-1 text-sm font-bold tracking-wide">Properties</h3>
+      <h3 className="pl-1 text-sm font-bold">Properties</h3>
       <Rows rows={props} onEdit={edit} />
-      <h3 className="text-success pl-1 text-sm font-bold tracking-wide">Relations</h3>
+      <h3 className="pl-1 text-sm font-bold">Relations</h3>
       {relations.length ? <Rows rows={relations} /> : <p className="text-muted-foreground px-1">Tidak ada relasi.</p>}
       {edges.some((e) => e.source_quote) && (
         <>
           <h3 className="text-muted-foreground pl-1 text-sm font-bold tracking-wide">Sumber (episode)</h3>
-          <div className="bg-muted text-muted-foreground max-h-40 overflow-y-auto rounded-md p-2 font-mono text-[11px] whitespace-pre-wrap">
+          <div className="bg-code text-on-code max-h-40 overflow-y-auto rounded-md p-3 font-mono text-sm leading-5 whitespace-pre-wrap wrap-anywhere">
             {[...new Set(edges.map((e) => e.source_quote).filter(Boolean))].join('\n—\n')}
           </div>
         </>

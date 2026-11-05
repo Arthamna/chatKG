@@ -86,13 +86,13 @@ export default function ModelingPage() {
     finally { setBusy(false) }
   }
 
-  return <div className="flex min-h-full flex-col gap-5 px-4 py-6 md:px-8">
-    <PageHeader title="Tinjau tipe hasil AI" description="Tipe dipetakan dari isi chat. Koreksi sebelum LLM mengekstrak seluruh percakapan.">
+  return <div className="workspace-page flex min-h-full flex-col gap-6">
+    <PageHeader eyebrow="Impor percakapan" title="Tinjau tipe hasil AI" description="Tipe dipetakan dari isi chat. Koreksi sebelum LLM mengekstrak seluruh percakapan.">
       <Stepper active={1} />
     </PageHeader>
     {!source && <p className="text-warning">Belum ada file. Mulai dari Upload chat.</p>}
     {(error || job.error || job.data?.error) && <p role="alert" className="bg-destructive-subtle text-destructive rounded-md p-3 text-sm">{error || job.error || job.data?.error}</p>}
-    <div className="flex flex-col gap-5 lg:flex-row">
+    <div className="flex flex-col gap-4 lg:flex-row">
       <div className="min-w-0 flex-1">
         {active || (!!jobId && !job.data) ? <Card className="flex items-center gap-3 p-6">
           <LoaderCircle className="size-5 animate-spin" />

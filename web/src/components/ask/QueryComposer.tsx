@@ -19,13 +19,13 @@ export default function QueryComposer({ placeholder, disabled, onSend }: QueryCo
   }
   return (
     <form
-      className="flex items-center gap-2"
+      className="border-divider flex items-center gap-2 border-t px-4 py-3 sm:px-6"
       onSubmit={(e) => {
         e.preventDefault()
         submit()
       }}
     >
-      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} aria-label="Pertanyaan" className="h-10 flex-1" />
+      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} aria-label="Pertanyaan" className="h-10 min-w-0 flex-1" />
       <Button type="submit" disabled={disabled || !q.trim()}>
         <Send /> Kirim
       </Button>

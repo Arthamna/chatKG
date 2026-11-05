@@ -10,17 +10,17 @@ interface LegendProps {
 /** Types present in the current graph, colored like the nodes. */
 export default function Legend({ types, className, showDraft = true }: LegendProps) {
   return (
-    <div className={cn('bg-background/60 space-y-1.5 rounded-lg border-2 p-2.5 text-xs backdrop-blur-lg', className)}>
-      <p className="font-semibold">Legend</p>
+    <div className={cn('bg-card max-h-[50%] max-w-[calc(100%-1rem)] space-y-1.5 overflow-y-auto rounded-md border p-3 text-xs wrap-anywhere', className)}>
+      <p className="font-bold">Legend</p>
       {types.map((t) => (
         <div key={t} className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full" style={{ backgroundColor: typeColor(t) }} />
+          <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: typeColor(t) }} />
           {t}
         </div>
       ))}
       {showDraft && (
         <div className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full border-[1.5px] border-dashed border-amber-600" />
+          <span className="border-warning size-2.5 shrink-0 rounded-full border border-dashed" />
           Berubah di draft
         </div>
       )}

@@ -1,10 +1,9 @@
 # Chat → KG — Web UI
 
-React implementation of Figma **Page 02 · App UI**, following [`design/mockup-spec.md`](../design/mockup-spec.md). It is connected to the backend API; there is no mock data.
+The React workspace uses the backend API and shares one design system across all routes. [Design specification](../DESIGN.md)
 
-- **Stack:** React 19, Vite, Tailwind v4, and shadcn/ui ("new-york", zinc), the same stack as the LightRAG WebUI.
-- **UI primitives:** copied from `lightrag_webui/src/components/ui`.
-- **Graph:** sigma.js + graphology with `@sigma/node-border` and a ForceAtlas2 layout computed in the browser, using LightRAG's node colors and selection color.
+- **Stack:** React 19, Vite, Tailwind v4, and Radix UI primitives.
+- **Graph:** Sigma.js and Graphology with `@sigma/node-border` and a ForceAtlas2 layout computed in the browser.
 - **Data:** `src/lib/api.ts` calls `backend/app/api.py` under `/api`. Vite proxies it to `BACKEND_URL` (default `http://localhost:8000`). Set `VITE_API_URL` to call another origin.
 
 ```bash

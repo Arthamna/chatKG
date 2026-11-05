@@ -3,129 +3,131 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Tokens — design/mockup-spec.md § Colors (shadcn zinc from LightRAG WebUI) */
+@font-face {
+  font-family: 'IBM Plex Sans Variable';
+  src: url('/fonts/ibm-plex-sans-variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+}
+
+/* DESIGN.md palette, inherited by every route and portaled surface. */
 :root {
-  --background: #ffffff;
-  --foreground: #09090b;
+  color-scheme: light;
+  --background: #eeefe9;
+  --foreground: #23251d;
+  --body-text: #4d4f46;
   --card: #ffffff;
-  --card-foreground: #09090b;
-  --popover: #ffffff;
-  --popover-foreground: #09090b;
-  --primary: #18181b;
-  --primary-foreground: #fafafa;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
-  --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #09090b;
-  --radius: 0.625rem;
-
-  --brand: #34d399;
-  --brand-foreground: #fafafa;
-  --success: #059669;
-  --success-subtle: #ecfdf5;
-  --warning: #b45309;
-  --warning-subtle: #fffbeb;
+  --primary: #f7a501;
+  --primary-foreground: #23251d;
+  --primary-pressed: #dd9001;
+  --secondary: #e5e7e0;
+  --muted: #fcfcfa;
+  --muted-foreground: #6c6e63;
+  --disabled-text: #6c6e63;
+  --border: #bfc1b7;
+  --divider: #dcdfd2;
+  --ring: rgba(59, 130, 246, 0.5);
+  --focus-border: #2c84e0;
+  --pill-active: #23251d;
+  --pill-active-text: #ffffff;
+  --success: #21664b;
+  --success-subtle: #d9eddf;
+  --warning: #785010;
+  --warning-subtle: #f5e8ce;
+  --destructive: #a12b23;
+  --destructive-foreground: #ffffff;
+  --destructive-subtle: #f7d6d3;
   --info: #1d4ed8;
-  --info-subtle: #eff6ff;
-  --violet: #6d28d9;
-  --destructive-subtle: #fef2f2;
-
-  --graph-edge: #d4d4d8;
-  --graph-label: #000000;
+  --info-subtle: #dceaf6;
+  --link: #1078a3;
+  --violet: #7c44a6;
 }
 
 .dark {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #09090b;
-  --card-foreground: #fafafa;
-  --popover: #09090b;
-  --popover-foreground: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #18181b;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #d4d4d8;
+  color-scheme: dark;
+  --background: #23251d;
+  --foreground: #fcfcfa;
+  --body-text: #dcdfd2;
+  --card: #2b2d24;
+  --secondary: #33342d;
+  --muted: #25271f;
+  --muted-foreground: #b6b7af;
+  --disabled-text: #b6b7af;
+  --border: #56594d;
+  --divider: #414438;
+  --pill-active: #eeefe9;
+  --pill-active-text: #23251d;
+  --success: #a0d7ba;
+  --success-subtle: #243d32;
+  --warning: #efd6a2;
+  --warning-subtle: #413520;
+  --destructive: #f7d6d3;
+  --destructive-foreground: #23251d;
+  --destructive-subtle: #4b2d29;
+  --info: #dceaf6;
+  --info-subtle: #29394e;
+  --link: #a6d9ee;
+  --violet: #d8bae6;
+}
 
-  --success: #34d399;
-  --success-subtle: #022c22;
-  --warning: #fbbf24;
-  --warning-subtle: #451a03;
-  --info: #60a5fa;
-  --info-subtle: #172554;
-  --violet: #a78bfa;
-  --destructive-subtle: #450a0a;
-
-  --graph-edge: #888888;
-  --graph-label: #ffffff;
+@theme {
+  --font-sans: 'IBM Plex Sans Variable', 'IBM Plex Sans', -apple-system, system-ui, sans-serif;
+  --container-workspace: 80rem;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --color-code: #23251d;
+  --color-on-code: #ffffff;
+  --color-code-error: #f7d6d3;
+  --color-code-success: #d9eddf;
 }
 
 @theme inline {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --color-body-text: var(--body-text);
+  --color-divider: var(--divider);
+  --color-primary-pressed: var(--primary-pressed);
+  --color-focus-border: var(--focus-border);
+  --color-pill-active: var(--pill-active);
+  --color-pill-active-text: var(--pill-active-text);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-foreground: var(--foreground);
+  --color-accent: var(--secondary);
+  --color-accent-foreground: var(--foreground);
+  --color-input: var(--border);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
-  --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-brand: var(--brand);
-  --color-brand-foreground: var(--brand-foreground);
   --color-success: var(--success);
   --color-success-subtle: var(--success-subtle);
   --color-warning: var(--warning);
   --color-warning-subtle: var(--warning-subtle);
   --color-info: var(--info);
+  --color-link: var(--link);
+  --color-disabled-text: var(--disabled-text);
   --color-info-subtle: var(--info-subtle);
   --color-violet: var(--violet);
   --color-destructive-subtle: var(--destructive-subtle);
+}
 
-  /* Graph palette — same in both themes (utils/graphColor.ts) */
-  --color-graph-person: #4169e1;
-  --color-graph-organization: #00cc00;
-  --color-graph-concept: #e3493b;
-  --color-graph-artifact: #4421af;
-  --color-graph-event: #00bfa0;
-  --color-graph-location: #cf6d17;
-  --color-graph-unknown: #b0b0b0;
-  --color-graph-selected: #f57f17;
-
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+@utility workspace-page {
+  @apply mx-auto w-full max-w-workspace px-4 pt-6 pb-12 sm:px-6 lg:pt-8;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   html,
   body,

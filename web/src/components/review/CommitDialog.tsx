@@ -42,7 +42,7 @@ export default function CommitDialog({ open, onOpenChange, version, title, descr
         <span className="text-sm font-medium">Pesan commit</span>
         <Input value={message} onChange={(e) => setMessage(e.target.value)} className="w-full" />
       </label>
-      <div className="bg-muted space-y-2.5 rounded-lg p-4 text-sm">{summary}</div>
+      <div className="bg-muted space-y-2.5 rounded-md p-4 text-sm">{summary}</div>
       {showOpenEditor && (
         <label className="flex items-center gap-2 text-sm font-medium">
           <Checkbox checked={openEditor} onCheckedChange={(v) => setOpenEditor(v === true)} />

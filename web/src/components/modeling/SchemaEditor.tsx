@@ -59,7 +59,7 @@ export default function SchemaEditor({ value, baseline, onChange }: Props) {
       <CardDescription>Koreksi hasil AI sebelum ekstraksi. Identitas tipe dan atribut lama dikunci agar data KG tetap konsisten.</CardDescription>
       {value.entity_types.map((t, index) => {
         const old = baseline.entity_types.find((e) => e.name === t.name)
-        return <div key={index} className="space-y-3 rounded-lg border p-4">
+        return <div key={index} className="space-y-3 rounded-md border p-4">
           <div className="flex items-end gap-3">
             <div className="min-w-0 flex-1"><Field label="Nama tipe"><Input aria-label={`Nama tipe ${index + 1}`} className="w-full" value={t.name} disabled={!!old} onChange={(e) => renameEntity(index, e.target.value)} /></Field></div>
             <Button variant="ghost" size="icon" tooltip="Hapus tipe" disabled={!!old} onClick={() => {
@@ -74,7 +74,7 @@ export default function SchemaEditor({ value, baseline, onChange }: Props) {
           <Field label="Deskripsi"><Input aria-label={`Deskripsi ${t.name}`} className="w-full" value={t.description} onChange={(e) => setEntities(value.entity_types.map((x, i) => i === index ? { ...x, description: e.target.value } : x))} /></Field>
           {t.attributes.map((a, j) => {
             const locked = old?.attributes.some((x) => x.name === a.name)
-            return <div key={j} className="grid items-end gap-2 sm:grid-cols-[1fr_140px_2fr_auto]">
+            return <div key={j} className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,8rem)_minmax(0,2fr)_auto]">
               <Field label="Atribut"><Input aria-label={`Atribut ${j + 1} ${t.name}`} className="w-full" disabled={locked} value={a.name} onChange={(e) => updateAttribute(index, j, { name: e.target.value })} /></Field>
               {locked ? <Field label="Tipe"><Input className="w-full" disabled value={a.type} /></Field> : <SelectField label="Tipe atribut" value={a.type} onChange={(type) => updateAttribute(index, j, { type: type as SchemaAttribute['type'] })} options={['string', 'integer', 'number', 'boolean', 'datetime'].map((type) => ({ value: type, label: type }))} />}
               <Field label="Deskripsi atribut"><Input aria-label={`Deskripsi atribut ${a.name}`} className="w-full" value={a.description} onChange={(e) => updateAttribute(index, j, { description: e.target.value })} /></Field>
@@ -97,8 +97,8 @@ export default function SchemaEditor({ value, baseline, onChange }: Props) {
           if (i === index) return { ...x, ...patch }
           return x.name === r.name ? { ...x, ...(patch.name === undefined ? {} : { name: patch.name }), ...(patch.description === undefined ? {} : { description: patch.description }) } : x
         }))
-        return <div key={index} className="space-y-3 rounded-lg border p-4">
-          <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+        return <div key={index} className="space-y-3 rounded-md border p-4">
+          <div className="grid items-end gap-3 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
             {lockedPair ? <Field label="Sumber"><Input className="w-full" disabled value={r.source} /></Field> : <SelectField label="Sumber" value={r.source} options={names} onChange={(source) => update({ source })} />}
             <Field label="Relasi"><Input className="w-full" aria-label={`Relasi ${index + 1}`} disabled={lockedName} value={r.name} onChange={(e) => update({ name: e.target.value })} /></Field>
             {lockedPair ? <Field label="Target"><Input className="w-full" disabled value={r.target} /></Field> : <SelectField label="Target" value={r.target} options={names} onChange={(target) => update({ target })} />}
@@ -114,7 +114,7 @@ export default function SchemaEditor({ value, baseline, onChange }: Props) {
     <Card className="space-y-3 p-6">
       <CardTitle>Kamus singkatan</CardTitle>
       {Object.entries(value.glossary).map(([key, description], index) => <div key={index} className="flex gap-2">
-        <Input aria-label="Singkatan" value={key} onChange={(e) => onChange({ ...value, glossary: Object.fromEntries(Object.entries(value.glossary).map(([k, v], i) => [i === index ? e.target.value : k, v])) })} />
+        <Input aria-label="Singkatan" className="w-1/3 min-w-0" value={key} onChange={(e) => onChange({ ...value, glossary: Object.fromEntries(Object.entries(value.glossary).map(([k, v], i) => [i === index ? e.target.value : k, v])) })} />
         <Input aria-label={`Arti ${key}`} className="min-w-0 flex-1" value={description} onChange={(e) => onChange({ ...value, glossary: { ...value.glossary, [key]: e.target.value } })} />
         <Button variant="ghost" size="icon" tooltip="Hapus singkatan" onClick={() => onChange({ ...value, glossary: Object.fromEntries(Object.entries(value.glossary).filter(([k]) => k !== key)) })}><Trash2 /></Button>
       </div>)}
