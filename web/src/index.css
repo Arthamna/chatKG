@@ -1,0 +1,147 @@
+@import 'tailwindcss';
+@plugin 'tailwindcss-animate';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tokens — design/mockup-spec.md § Colors (shadcn zinc from LightRAG WebUI) */
+:root {
+  --background: #ffffff;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #09090b;
+  --radius: 0.625rem;
+
+  --brand: #34d399;
+  --brand-foreground: #fafafa;
+  --success: #059669;
+  --success-subtle: #ecfdf5;
+  --warning: #b45309;
+  --warning-subtle: #fffbeb;
+  --info: #1d4ed8;
+  --info-subtle: #eff6ff;
+  --violet: #6d28d9;
+  --destructive-subtle: #fef2f2;
+
+  --graph-edge: #d4d4d8;
+  --graph-label: #000000;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #09090b;
+  --card-foreground: #fafafa;
+  --popover: #09090b;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fafafa;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #d4d4d8;
+
+  --success: #34d399;
+  --success-subtle: #022c22;
+  --warning: #fbbf24;
+  --warning-subtle: #451a03;
+  --info: #60a5fa;
+  --info-subtle: #172554;
+  --violet: #a78bfa;
+  --destructive-subtle: #450a0a;
+
+  --graph-edge: #888888;
+  --graph-label: #ffffff;
+}
+
+@theme inline {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-violet: var(--violet);
+  --color-destructive-subtle: var(--destructive-subtle);
+
+  /* Graph palette — same in both themes (utils/graphColor.ts) */
+  --color-graph-person: #4169e1;
+  --color-graph-organization: #00cc00;
+  --color-graph-concept: #e3493b;
+  --color-graph-artifact: #4421af;
+  --color-graph-event: #00bfa0;
+  --color-graph-location: #cf6d17;
+  --color-graph-unknown: #b0b0b0;
+  --color-graph-selected: #f57f17;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
