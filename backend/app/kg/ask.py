@@ -12,6 +12,7 @@ from graphiti_core.search.search_config_recipes import COMBINED_HYBRID_SEARCH_CR
 from graphiti_core.search.search_filters import ComparisonOperator, DateFilter, SearchFilters
 
 from app.ai.groq_llm import BudgetedGroqClient
+from app.ai.openrouter_llm import OpenRouterClient
 
 SYSTEM_PROMPT = """\
 Kamu menjawab pertanyaan berdasarkan knowledge graph yang diekstrak dari chat.
@@ -49,7 +50,7 @@ def _iso(d: datetime | None) -> str | None:
 
 async def ask(
     graphiti: Graphiti,
-    llm: BudgetedGroqClient,
+    llm: BudgetedGroqClient | OpenRouterClient,
     question: str,
     *,
     group_id: str,

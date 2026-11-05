@@ -141,7 +141,7 @@ class QuotaBudget:
                     return event
                 if self.on_wait:
                     self.on_wait(model, wait, reason)
-                logger.info('Groq quota (%s) for %s: waiting %.0fs', reason, model, wait)
+                logger.info('LLM quota (%s) for %s: waiting %.0fs', reason, model, wait)
                 await self._sleep(min(wait, MAX_SLEEP_CHUNK) + 0.05)
 
     def settle(self, reservation: list[float], actual_tokens: int) -> None:

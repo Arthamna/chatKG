@@ -43,7 +43,7 @@ export default function QuerySettings({ value, onChange, kgs, versions, hasDraft
       <Field label="Point-in-time (opsional)">
         <Input type="datetime-local" value={value.pointInTime} onChange={(e) => set('pointInTime', e.target.value)} className="w-full" />
       </Field>
-      <SelectField label="Model jawaban (Groq)" value={value.model} onChange={(v) => set('model', v)} options={models.map((m) => ({ value: m, label: m }))} />
+      <SelectField label="Model jawaban" value={value.model} onChange={(v) => set('model', v)} options={models.map((m) => ({ value: m, label: m }))} />
       <label className="flex items-center gap-2 text-sm">
         <Checkbox checked={value.includeInvalid} onCheckedChange={(v) => set('includeInvalid', v === true)} /> Sertakan fakta yang sudah invalid
       </label>

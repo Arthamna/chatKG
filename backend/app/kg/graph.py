@@ -1,4 +1,4 @@
-"""Graphiti wiring: Groq for generation, GLiNER2 + sentence-transformers on CPU, Neo4j."""
+"""Graphiti wiring: OpenRouter/Groq generation, CPU vectors, Neo4j."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from graphiti_core.llm_client.config import LLMConfig
 
 from app.ai.cpu_models import CrossEncoderReranker, NoopReranker, SentenceTransformerEmbedder
 from app.ai.groq_llm import BudgetedGroqClient
+from app.ai.openrouter_llm import OpenRouterClient
 from app.ai.quota import Limits, QuotaBudget, WaitCallback
 from app.config import Settings, get_settings
 
@@ -34,6 +35,8 @@ _llm_client_module.get_extraction_language_instruction = _indonesian_instruction
 
 
 def build_budget(s: Settings, on_wait: WaitCallback | None = None) -> QuotaBudget:
+    if s.llm_provider == 'openrouter':
+        return QuotaBudget(Limits(rpm=s.openrouter_rpm, rpd=s.openrouter_rpd), s.quota_state_path, on_wait=on_wait)
     limits = Limits(s.groq_rpm, s.groq_tpm, s.groq_rpd, s.groq_tpd).scaled(s.groq_budget_ratio)
     return QuotaBudget(limits, s.quota_state_path, on_wait=on_wait)
 
@@ -51,8 +54,21 @@ def build_groq(s: Settings, budget: QuotaBudget) -> BudgetedGroqClient:
     return BudgetedGroqClient(config, budget, reasoning_effort=s.groq_reasoning_effort)
 
 
-def build_llm(s: Settings, groq_client: BudgetedGroqClient) -> LLMClient:
-    if s.entity_extractor == 'gliner2':
+def build_generation(s: Settings, budget: QuotaBudget):
+    if s.llm_provider == 'groq':
+        return build_groq(s, budget)
+    if not s.openrouter_api_key:
+        raise RuntimeError('OPENROUTER_API_KEY belum diisi di .env')
+    return OpenRouterClient(
+        LLMConfig(
+            api_key=s.openrouter_api_key, model=s.openrouter_model, temperature=0, max_tokens=s.openrouter_max_tokens
+        ),
+        budget,
+    )
+
+
+def build_llm(s: Settings, groq_client: BudgetedGroqClient | OpenRouterClient) -> LLMClient:
+    if s.llm_provider == 'groq' and s.entity_extractor == 'gliner2':
         # Loads weights synchronously; call before heavy async work starts.
         from graphiti_core.llm_client.gliner2_client import GLiNER2Client
 
@@ -81,16 +97,16 @@ def build_graphiti(
     *,
     on_quota_wait: WaitCallback | None = None,
     with_llm: bool = True,
-) -> tuple[Graphiti, BudgetedGroqClient | None]:
+) -> tuple[Graphiti, BudgetedGroqClient | OpenRouterClient | None]:
     """Create a Graphiti instance. ``with_llm=False`` is enough for search-only use
-    without a Groq key (search does not call the LLM)."""
+    without an LLM key (search does not call the LLM)."""
     s = s or get_settings()
     if not s.neo4j_password:
         raise RuntimeError('NEO4J_PASSWORD is empty: copy .env.example to .env and set it')
-    groq_client: BudgetedGroqClient | None = None
+    groq_client: BudgetedGroqClient | OpenRouterClient | None = None
     llm: LLMClient | None = None
     if with_llm:
-        groq_client = build_groq(s, build_budget(s, on_quota_wait))
+        groq_client = build_generation(s, build_budget(s, on_quota_wait))
         llm = build_llm(s, groq_client)
     graphiti = Graphiti(
         s.neo4j_uri,

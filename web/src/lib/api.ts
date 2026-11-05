@@ -63,6 +63,10 @@ export interface Version {
 }
 
 export interface Health {
+  llm: boolean
+  llm_provider: string
+  llm_model: string
+  llm_models: string[]
   neo4j: boolean
   neo4j_uri: string
   groq: boolean
@@ -91,6 +95,7 @@ export interface PreviewEpisode {
 }
 
 export interface SourcePreview {
+  schema_job: IngestJob | null
   source_id: string
   filename: string
   date_order: 'MDY' | 'DMY'
@@ -106,6 +111,9 @@ export interface SourcePreview {
 export type JobStatus = 'queued' | 'running' | 'waiting_quota' | 'done' | 'failed' | 'cancelled'
 
 export interface IngestJob {
+  kind?: 'schema' | 'ingest'
+  sampled_episodes?: number
+  total_episodes?: number
   id: string
   kg_id: string
   source_id: string
@@ -127,6 +135,27 @@ export interface IngestJob {
 }
 
 export type ChangeKind = 'add' | 'modify' | 'invalidate' | 'remove' | 'conflict'
+
+export interface SchemaAttribute {
+  name: string
+  type: 'string' | 'integer' | 'number' | 'boolean' | 'datetime'
+  description: string
+}
+
+export interface Ontology {
+  entity_types: { name: string; description: string; attributes: SchemaAttribute[] }[]
+  edge_types: { name: string; description: string }[]
+  edge_type_map: { source: string; target: string; relations: string[] }[]
+  glossary: Record<string, string>
+}
+
+export interface SchemaProposal {
+  revision: string
+  base_revision: string
+  ontology: Ontology
+  baseline: Ontology
+  sampled_episodes: number
+}
 
 export interface ReviewItem {
   id: string
@@ -262,11 +291,22 @@ export const api = {
     return request<SourcePreview>(`/kgs/${enc(kg)}/sources`, { method: 'POST', body })
   },
 
-  startJob: (kg: string, sourceId: string) =>
-    request<IngestJob>(`/kgs/${enc(kg)}/ingest-jobs`, { method: 'POST', json: { source_id: sourceId } }),
+  startSchemaJob: (kg: string, source: string, force = false) =>
+    request<IngestJob>(`/kgs/${enc(kg)}/sources/${enc(source)}/schema-jobs`, { method: 'POST', json: { force } }),
+  sourceSchema: (kg: string, source: string) =>
+    request<SchemaProposal | null>(`/kgs/${enc(kg)}/sources/${enc(source)}/schema`),
+  saveSchema: (kg: string, source: string, revision: string, ontology: Ontology) =>
+    request<SchemaProposal>(`/kgs/${enc(kg)}/sources/${enc(source)}/schema`, {
+      method: 'PUT', json: { revision, ontology }
+    }),
+  startJob: (kg: string, sourceId: string, revision: string) =>
+    request<IngestJob>(`/kgs/${enc(kg)}/ingest-jobs`, {
+      method: 'POST', json: { source_id: sourceId, schema_revision: revision }
+    }),
   listJobs: (kg: string) => request<IngestJob[]>(`/kgs/${enc(kg)}/ingest-jobs`),
   getJob: (id: string) => request<IngestJob>(`/ingest-jobs/${enc(id)}`),
   cancelJob: (id: string) => request<IngestJob>(`/ingest-jobs/${enc(id)}/cancel`, { method: 'POST' }),
+  retryJob: (id: string) => request<IngestJob>(`/ingest-jobs/${enc(id)}/retry`, { method: 'POST' }),
 
   ensureDraft: (kg: string) => request<{ group_id: string }>(`/kgs/${enc(kg)}/draft`, { method: 'POST' }),
   discardDraft: (kg: string) => request<{ deleted: number }>(`/kgs/${enc(kg)}/draft`, { method: 'DELETE' }),

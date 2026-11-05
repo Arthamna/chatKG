@@ -42,12 +42,20 @@ class FakeGroq:
     def __init__(self):
         self.prompts: list[str] = []
 
+    async def generate_response(self, messages, **kwargs):
+        return {
+            'entity_types': [{'name': 'Person', 'description': 'Orang', 'attributes': []}],
+            'edge_types': [{'name': 'REMINDS', 'description': 'Mengingatkan'}],
+            'edge_type_map': [{'source': 'Person', 'target': 'Person', 'relations': ['REMINDS']}],
+            'glossary': {},
+        }
+
     async def complete(self, messages, **kw):
         self.prompts.append(messages[-1]['content'])
         return 'Leon mengingatkan Pemilik [1].', 10
 
 
-async def fake_ingest(graphiti, episodes, *, group_id, instructions, progress=None):
+async def fake_ingest(graphiti, episodes, *, group_id, instructions, progress=None, ontology=None):
     """Stand-in for Graphiti extraction: one episode -> 2 entities + 1 fact."""
     emb = graphiti.embedder
     now = datetime.now(UTC)
@@ -168,8 +176,19 @@ def test_full_flow(client, kg):
     )
     assert bad.status_code == 422
 
+    # A4: inferred schema must be reviewed before extraction.
+    mapped = wait_job(client, preview['schema_job']['id'])
+    assert mapped['status'] == 'done', mapped
+    schema = client.get(f'/api/kgs/{kg}/sources/{preview["source_id"]}/schema').json()
+
     # A5: ingest job
-    job = client.post(f'/api/kgs/{kg}/ingest-jobs', json={'source_id': preview['source_id']}).json()
+    job = client.post(
+        f'/api/kgs/{kg}/ingest-jobs',
+        json={
+            'source_id': preview['source_id'],
+            'schema_revision': schema['revision'],
+        },
+    ).json()
     job = wait_job(client, job['id'])
     assert job['status'] == 'done', job
     assert (job['total'], job['done'], job['nodes'], job['edges']) == (4, 4, 2, 1)

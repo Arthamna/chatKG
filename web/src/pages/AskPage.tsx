@@ -35,7 +35,7 @@ export default function AskPage() {
     if (!settings.kg && kgs.data?.length) setSettings((s) => ({ ...s, kg: kgs.data![0].id }))
   }, [kgs.data, settings.kg])
   useEffect(() => {
-    if (!settings.model && health.data) setSettings((s) => ({ ...s, model: health.data!.groq_model }))
+    if (!settings.model && health.data) setSettings((s) => ({ ...s, model: health.data!.llm_model }))
   }, [health.data, settings.model])
   useEffect(() => {
     if (settings.kg) setCurrentKg(settings.kg)
@@ -43,7 +43,7 @@ export default function AskPage() {
 
   const kgName = kgs.data?.find((k) => k.id === settings.kg)?.name ?? settings.kg
   const scope = `${kgName || 'KG'} · ${settings.version}`
-  const models = health.data ? [health.data.groq_model, health.data.groq_small_model] : []
+  const models = health.data?.llm_models ?? []
 
   const ask = async (q: string) => {
     if (!settings.kg) return
@@ -95,8 +95,8 @@ export default function AskPage() {
             </SheetContent>
           </Sheet>
         </div>
-        {health.data && !health.data.groq && (
-          <p className="bg-warning-subtle text-warning rounded-md px-3 py-2 text-sm">GROQ_API_KEY belum diisi di backend; pertanyaan belum bisa dijawab.</p>
+        {health.data && !health.data.llm && (
+          <p className="bg-warning-subtle text-warning rounded-md px-3 py-2 text-sm">API key LLM belum diisi di backend; periksa konfigurasi provider.</p>
         )}
         <div className="bg-background min-h-0 flex-1 overflow-y-auto rounded-lg border">
           <MessageList messages={messages} loading={loading} scope={scope} onSuggest={ask} />

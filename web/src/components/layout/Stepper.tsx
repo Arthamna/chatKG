@@ -3,7 +3,7 @@ import { Check } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
-const STEPS = ['Upload chat', 'Modeling', 'Ekstraksi & review', 'Commit']
+const STEPS = ['Upload chat', 'Tinjau tipe AI', 'Ekstraksi & review', 'Commit']
 
 /** 4-step ingest stepper. Labels hidden below lg (numbers only) per spec. */
 export default function Stepper({ active }: { active: number }) {

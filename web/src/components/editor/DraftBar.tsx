@@ -1,4 +1,5 @@
 import { GitCommitHorizontal, History, Network, Pencil } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
@@ -58,6 +59,9 @@ export default function DraftBar(p: DraftBarProps) {
       <div className="ml-auto flex gap-2">
         {isDraft && !p.readOnly ? (
           <>
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/upload/review?kg=${encodeURIComponent(p.kg)}`}>Tinjau perubahan</Link>
+            </Button>
             <Button variant="outline" size="sm" onClick={p.onDiscard}>
               Buang draft
             </Button>

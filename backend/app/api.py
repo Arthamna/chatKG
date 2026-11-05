@@ -23,6 +23,8 @@ from app.jobs import JobRunner, save_source, source_record
 from app.kg import draft as D
 from app.kg import versions as V
 from app.kg.ontology import DEFAULT_GLOSSARY, EDGE_TYPE_MAP, EDGE_TYPES, ENTITY_TYPES, INSTRUCTIONS_TEMPLATE
+from app.kg.schema import Ontology
+from app.kg.schema_store import SchemaConflict, approved_snapshot, edit_proposal, proposal
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,7 @@ logger = logging.getLogger(__name__)
 def _build(settings: Settings):
     from app.kg.graph import build_graphiti
 
-    has_llm = bool(settings.groq_api_key)
+    has_llm = bool(settings.llm_api_key)
     graphiti, groq_client = build_graphiti(settings, with_llm=has_llm)
     budget = groq_client.budget if groq_client else None
     return graphiti, groq_client, budget
@@ -48,9 +50,10 @@ def create_app(build=_build, settings: Settings | None = None, ingest_fn=None) -
         await graphiti.build_indices_and_constraints()
         await V.ensure_schema(graphiti.driver)
         kwargs = {'ingest_fn': ingest_fn} if ingest_fn else {}
-        runner = JobRunner(graphiti, settings, budget=budget, **kwargs)
+        runner = JobRunner(graphiti, settings, budget=budget, llm=groq_client, **kwargs)
         await runner.start()
         app.state.graphiti, app.state.groq, app.state.runner = graphiti, groq_client, runner
+        app.state.llm = groq_client
         try:
             yield
         finally:
@@ -133,6 +136,16 @@ class AskIn(BaseModel):
 
 class JobIn(BaseModel):
     source_id: str
+    schema_revision: str
+
+
+class SchemaEdit(BaseModel):
+    revision: str
+    ontology: Ontology
+
+
+class SchemaJobIn(BaseModel):
+    force: bool = False
 
 
 def _kg_json(kg: V.KnowledgeGraph) -> dict[str, Any]:
@@ -167,6 +180,29 @@ def _preview(sid: str, prepared, filename: str) -> dict[str, Any]:
 
 
 def _routes(app: FastAPI) -> None:
+    @app.exception_handler(SchemaConflict)
+    async def _schema_error(request: Request, exc: SchemaConflict):
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({'detail': str(exc)}, status_code=409)
+
+    async def source_for(request, kg_id, source_id):
+        await _kg(request, kg_id)
+        src = await source_record(_d(request), source_id)
+        if src is None or src['kg_id'] != kg_id:
+            raise HTTPException(404, 'Source tidak ditemukan di KG ini')
+        return src
+
+    async def require_idle(request, kg_id):
+        runner = request.app.state.runner
+        jobs = await runner.list(kg_id)
+        if any(
+            (j['status'] in ('queued', 'running', 'waiting_quota') or j['id'] == runner._current)
+            and j.get('kind', 'ingest') == 'ingest'
+            for j in jobs
+        ):
+            raise HTTPException(409, 'Tunggu atau batalkan ekstraksi sebelum mengubah versi/draft')
+
     @app.exception_handler(D.DraftError)
     async def _draft_error(request: Request, exc: D.DraftError):
         from fastapi.responses import JSONResponse
@@ -182,24 +218,31 @@ def _routes(app: FastAPI) -> None:
         except Exception:  # noqa: BLE001
             neo4j = False
         return {
+            'llm': bool(request.app.state.llm),
+            'llm_provider': s.llm_provider,
+            'llm_model': s.llm_model,
+            'llm_models': [s.openrouter_model]
+            if s.llm_provider == 'openrouter'
+            else [s.groq_model, s.groq_small_model],
             'neo4j': neo4j,
             'neo4j_uri': s.neo4j_uri,
-            'groq': bool(request.app.state.groq),
+            'groq': s.llm_provider == 'groq' and bool(request.app.state.llm),
             'groq_model': s.groq_model,
             'groq_small_model': s.groq_small_model,
-            'entity_extractor': s.entity_extractor,
+            'entity_extractor': 'llm' if s.llm_provider == 'openrouter' else s.entity_extractor,
             'embedding_model': s.embedding_model_name,
             'reranker_model': s.reranker_model_name if s.reranker != 'none' else None,
         }
 
     @app.get('/api/quota')
     async def quota(request: Request):
-        groq = request.app.state.groq
+        groq = request.app.state.llm
         if not groq:
             return {'limits': None, 'models': {}}
         s: Settings = request.app.state.settings
         b = groq.budget
-        return {'limits': asdict(b.limits), 'models': {m: b.usage(m) for m in (s.groq_model, s.groq_small_model)}}
+        models = [groq.quota_key] if s.llm_provider == 'openrouter' else (s.groq_model, s.groq_small_model)
+        return {'provider': s.llm_provider, 'limits': asdict(b.limits), 'models': {m: b.usage(m) for m in models}}
 
     @app.get('/api/schema')
     async def schema():
@@ -280,7 +323,32 @@ def _routes(app: FastAPI) -> None:
             date_order=date_order or None,
             counts=prepared.parsed.counts,
         )
-        return _preview(sid, prepared, file.filename or 'chat.txt')
+        preview = _preview(sid, prepared, file.filename or 'chat.txt')
+        preview['schema_job'] = (
+            await request.app.state.runner.submit(kg_id, sid, kind='schema') if request.app.state.llm else None
+        )
+        return preview
+
+    @app.post('/api/kgs/{kg_id}/sources/{source_id}/schema-jobs', status_code=202)
+    async def schema_job(request: Request, kg_id: str, source_id: str, body: SchemaJobIn | None = None):
+        await source_for(request, kg_id, source_id)
+        if not request.app.state.llm:
+            raise HTTPException(503, 'API key LLM belum diisi; periksa konfigurasi provider')
+        return await request.app.state.runner.submit(kg_id, source_id, kind='schema', force=bool(body and body.force))
+
+    @app.get('/api/kgs/{kg_id}/sources/{source_id}/schema')
+    async def source_schema(request: Request, kg_id: str, source_id: str):
+        return proposal(await source_for(request, kg_id, source_id))
+
+    @app.put('/api/kgs/{kg_id}/sources/{source_id}/schema')
+    async def update_schema(request: Request, kg_id: str, source_id: str, body: SchemaEdit):
+        src = await source_for(request, kg_id, source_id)
+        try:
+            return await edit_proposal(_d(request), src, body.revision, body.ontology)
+        except SchemaConflict:
+            raise
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
 
     @app.get('/api/sources/{source_id}')
     async def get_source(request: Request, source_id: str):
@@ -293,11 +361,11 @@ def _routes(app: FastAPI) -> None:
     @app.post('/api/kgs/{kg_id}/ingest-jobs', status_code=202)
     async def start_job(request: Request, kg_id: str, body: JobIn):
         await _kg(request, kg_id)
-        if not request.app.state.groq:
-            raise HTTPException(503, 'GROQ_API_KEY belum diisi; ekstraksi butuh Groq')
-        if await source_record(_d(request), body.source_id) is None:
-            raise HTTPException(404, 'source tidak ditemukan')
-        return await request.app.state.runner.submit(kg_id, body.source_id)
+        if not request.app.state.llm:
+            raise HTTPException(503, 'API key LLM belum diisi; ekstraksi butuh LLM')
+        src = await source_for(request, kg_id, body.source_id)
+        snapshot = await approved_snapshot(_d(request), src, body.schema_revision)
+        return await request.app.state.runner.submit(kg_id, body.source_id, snapshot=snapshot)
 
     @app.get('/api/kgs/{kg_id}/ingest-jobs')
     async def list_jobs(request: Request, kg_id: str):
@@ -315,6 +383,12 @@ def _routes(app: FastAPI) -> None:
         await request.app.state.runner.cancel(job_id)
         return await request.app.state.runner.get(job_id)
 
+    @app.post('/api/ingest-jobs/{job_id}/retry', status_code=202)
+    async def retry_job(request: Request, job_id: str):
+        if not request.app.state.llm:
+            raise HTTPException(503, 'API key LLM belum diisi')
+        return await request.app.state.runner.retry(job_id)
+
     # ---- draft & review (A6, B) ----
     @app.post('/api/kgs/{kg_id}/draft')
     async def ensure_draft(request: Request, kg_id: str):
@@ -324,6 +398,7 @@ def _routes(app: FastAPI) -> None:
     @app.delete('/api/kgs/{kg_id}/draft')
     async def discard_draft(request: Request, kg_id: str):
         await _kg(request, kg_id)
+        await require_idle(request, kg_id)
         return {'deleted': await V.discard_draft(_d(request), kg_id)}
 
     @app.get('/api/kgs/{kg_id}/draft/changes')
@@ -382,6 +457,7 @@ def _routes(app: FastAPI) -> None:
     @app.post('/api/kgs/{kg_id}/versions', status_code=201)
     async def commit(request: Request, kg_id: str, body: CommitIn):
         await _kg(request, kg_id)
+        await require_idle(request, kg_id)
         try:
             return asdict(await V.commit(_d(request), kg_id, body.message, kind=body.kind))
         except ValueError as e:
@@ -390,6 +466,7 @@ def _routes(app: FastAPI) -> None:
     @app.post('/api/kgs/{kg_id}/versions/{n}/restore', status_code=201)
     async def restore(request: Request, kg_id: str, n: int, body: RestoreIn):
         await _kg(request, kg_id)
+        await require_idle(request, kg_id)
         try:
             return asdict(await V.restore(_d(request), kg_id, n, body.message))
         except ValueError as e:
@@ -406,9 +483,9 @@ def _routes(app: FastAPI) -> None:
         from app.kg.ask import ask as run_ask
 
         kg = await _kg(request, kg_id)
-        groq = request.app.state.groq
+        groq = request.app.state.llm
         if not groq:
-            raise HTTPException(503, 'GROQ_API_KEY belum diisi; jawaban butuh Groq')
+            raise HTTPException(503, 'API key LLM belum diisi; jawaban butuh LLM')
         version = body.version
         if version == 'latest':
             if not kg.latest and not kg.has_draft:

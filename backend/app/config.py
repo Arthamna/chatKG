@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -28,7 +29,15 @@ class Settings(BaseSettings):
     neo4j_user: str = 'neo4j'
     neo4j_password: str = ''
 
-    # ---- Generation: Groq ----
+    # ---- Generation ----
+    llm_provider: Literal['openrouter', 'groq'] = 'openrouter'
+    openrouter_api_key: str = ''
+    openrouter_model: str = 'openrouter/free'
+    openrouter_max_tokens: int = 4096
+    openrouter_rpm: int = 100
+    openrouter_rpd: int = 100
+
+    # ---- Legacy provider: Groq ----
     groq_api_key: str = ''
     groq_model: str = 'openai/gpt-oss-120b'
     groq_small_model: str = 'openai/gpt-oss-20b'
@@ -44,7 +53,7 @@ class Settings(BaseSettings):
     groq_answer_temperature: float = 0.2
 
     # ---- CPU models ----
-    entity_extractor: str = 'gliner2'  # gliner2 | llm
+    entity_extractor: str = 'llm'  # gliner2 | llm (OpenRouter always uses llm)
     gliner2_model: str = 'fastino/gliner2-base-v1'
     gliner2_threshold: float = 0.5
     embedding_model_name: str = 'intfloat/multilingual-e5-small'
@@ -63,7 +72,15 @@ class Settings(BaseSettings):
 
     @property
     def quota_state_path(self) -> Path:
-        return self.data_dir / 'groq_quota.json'
+        return self.data_dir / f'{self.llm_provider}_quota.json'
+
+    @property
+    def llm_api_key(self) -> str:
+        return self.openrouter_api_key if self.llm_provider == 'openrouter' else self.groq_api_key
+
+    @property
+    def llm_model(self) -> str:
+        return self.openrouter_model if self.llm_provider == 'openrouter' else self.groq_model
 
 
 @lru_cache

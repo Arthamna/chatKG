@@ -13,6 +13,7 @@ from graphiti_core.nodes import EpisodeType
 from app.ingest.segment import Episode
 
 from .ontology import EDGE_TYPE_MAP, EDGE_TYPES, ENTITY_TYPES
+from .schema import Ontology
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ async def ingest_episodes(
     group_id: str,
     instructions: str,
     progress: ProgressCallback | None = None,
+    ontology: Ontology | None = None,
 ) -> IngestReport:
     """Episodes go in sequentially and in time order, because fact invalidation
     depends on order. Already-stored episode names are skipped, so a crashed or
@@ -53,6 +55,15 @@ async def ingest_episodes(
     started = time.monotonic()
     known = await existing_episodes(graphiti, group_id)
     previous: list[str] = []
+    entity_types, edge_types, edge_type_map = (
+        ontology.graphiti_types()
+        if ontology
+        else (
+            ENTITY_TYPES,
+            EDGE_TYPES,
+            EDGE_TYPE_MAP,
+        )
+    )
 
     for i, ep in enumerate(sorted(episodes, key=lambda e: e.reference_time), 1):
         if ep.name in known:
@@ -69,9 +80,9 @@ async def ingest_episodes(
             reference_time=ep.reference_time,
             source=EpisodeType.message,
             group_id=group_id,
-            entity_types=ENTITY_TYPES,
-            edge_types=EDGE_TYPES,
-            edge_type_map=EDGE_TYPE_MAP,
+            entity_types=entity_types,
+            edge_types=edge_types,
+            edge_type_map=edge_type_map,
             previous_episode_uuids=previous or None,
             custom_extraction_instructions=instructions,
         )

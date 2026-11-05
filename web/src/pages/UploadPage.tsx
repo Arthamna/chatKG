@@ -65,6 +65,7 @@ export default function UploadPage() {
       const p = await api.uploadSource(kg, f, { owner: owner.trim(), aliases, tz, dateOrder: dateOrder === 'auto' ? '' : dateOrder })
       setPreview(p)
       setCurrentKg(kg)
+      navigate(`/upload/model?kg=${encodeURIComponent(kg)}&source=${encodeURIComponent(p.source_id)}`)
     } catch (e) {
       setPreview(null)
       setError(errorText(e))
@@ -77,7 +78,7 @@ export default function UploadPage() {
 
   return (
     <div className="flex min-h-full flex-col gap-5 px-4 py-6 md:px-8">
-      <PageHeader title="Upload chat" description="Unggah export WhatsApp, petakan nama, lalu cek episode yang akan diekstrak.">
+      <PageHeader title="Upload chat" description="Isi mapping peserta, lalu unggah chat. AI akan memetakan tipe entitas dan relasi secara otomatis.">
         <Stepper active={0} />
       </PageHeader>
 
@@ -207,7 +208,7 @@ export default function UploadPage() {
               Batal
             </Button>
             <Button size="sm" disabled={!preview || busy} onClick={() => preview && navigate(`/upload/model?kg=${kg}&source=${preview.source_id}`)}>
-              Lanjut: Modeling <ArrowRight />
+              Tinjau tipe hasil AI <ArrowRight />
             </Button>
           </div>
         </Card>

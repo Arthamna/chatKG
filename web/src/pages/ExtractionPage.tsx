@@ -41,6 +41,10 @@ export default function ExtractionPage() {
   const { reload } = job
 
   useEffect(() => {
+    if (j?.status === 'done') navigate(`/kg/${encodeURIComponent(kg)}/graph?version=draft`, { replace: true })
+  }, [j?.status, kg, navigate])
+
+  useEffect(() => {
     if (!active) return
     const t = setInterval(() => void reload(), 2000)
     return () => clearInterval(t)
@@ -54,7 +58,7 @@ export default function ExtractionPage() {
 
   return (
     <div className="flex min-h-full flex-col gap-5 px-4 py-6 md:px-8">
-      <PageHeader title="Ekstraksi" description={`Graphiti menulis ke draft ${groupIdFor(kg || 'kg', 'draft')}; kuota Groq diatur otomatis.`}>
+      <PageHeader title="Ekstraksi" description={`Graphiti menulis ke draft ${groupIdFor(kg || 'kg', 'draft')}; kuota LLM diatur otomatis.`}>
         <Stepper active={2} />
       </PageHeader>
 
@@ -90,7 +94,7 @@ export default function ExtractionPage() {
               </span>
               <span className="text-muted-foreground text-right">
                 {j?.status === 'waiting_quota' && j.resume_at
-                  ? `kuota Groq (${j.waiting_reason ?? 'limit'}) habis · lanjut otomatis ${when(j.resume_at)}`
+                  ? `kuota LLM (${j.waiting_reason ?? 'limit'}) habis · lanjut otomatis ${when(j.resume_at)}`
                   : j?.status === 'done'
                     ? `selesai ${when(j.finished_at)}`
                     : j?.current ?? ''}
@@ -127,6 +131,9 @@ export default function ExtractionPage() {
           </div>
 
           <div className="flex flex-wrap justify-end gap-2">
+            {(j?.status === 'failed' || j?.status === 'cancelled') && <Button variant="outline" size="sm" onClick={async () => {
+              try { await api.retryJob(jobId); await reload() } catch (e) { toast.error(errorText(e)) }
+            }}><ArrowRight /> Lanjutkan ekstraksi</Button>}
             <Button
               variant="ghost"
               size="sm"

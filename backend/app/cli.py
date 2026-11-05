@@ -91,24 +91,24 @@ async def _check() -> int:
     except Exception as e:  # noqa: BLE001
         ok = False
         print(f'[fail] neo4j {s.neo4j_uri}: {e}')
-    if s.groq_api_key:
-        from app.kg.graph import build_budget, build_groq
+    if s.llm_api_key:
+        from app.kg.graph import build_budget, build_generation
 
-        client = build_groq(s, build_budget(s))
+        client = build_generation(s, build_budget(s))
         try:
             text, billed = await client.complete(
                 [{'role': 'user', 'content': 'Balas dengan JSON {"ok": true}'}],
-                model=s.groq_small_model,
+                model=s.llm_model,
                 max_tokens=256,
                 temperature=0,
                 json_mode=True,
             )
-            print(f'[ok] groq {s.groq_small_model}: {text.strip()} ({billed} tokens)')
+            print(f'[ok] {s.llm_provider} {s.llm_model}: {text.strip()} ({billed} tokens)')
         except Exception as e:  # noqa: BLE001
             ok = False
-            print(f'[fail] groq: {e}')
+            print(f'[fail] {s.llm_provider}: {e}')
     else:
-        print('[skip] groq: GROQ_API_KEY is empty')
+        print('[skip] API key LLM belum diisi')
     return 0 if ok else 1
 
 
@@ -124,7 +124,7 @@ async def _ingest(args) -> int:
     def on_wait(model: str, seconds: float, reason: str) -> None:
         resume = datetime.now().astimezone().timestamp() + seconds
         print(
-            f'  … kuota Groq {model} ({reason}) habis, lanjut otomatis {datetime.fromtimestamp(resume):%Y-%m-%d %H:%M:%S}',
+            f'  … kuota LLM {model} ({reason}) habis, lanjut otomatis {datetime.fromtimestamp(resume):%Y-%m-%d %H:%M:%S}',
             flush=True,
         )
 
@@ -195,8 +195,9 @@ def cmd_quota(args) -> int:
 
     s = get_settings()
     budget = build_budget(s)
-    print(f'limits (after {s.groq_budget_ratio:.0%} margin): {budget.limits}')
-    for model in (s.groq_model, s.groq_small_model):
+    print(f'{s.llm_provider} limits: {budget.limits}')
+    models = ['openrouter:free'] if s.llm_provider == 'openrouter' else (s.groq_model, s.groq_small_model)
+    for model in models:
         print(model, json.dumps(budget.usage(model)))
     return 0
 

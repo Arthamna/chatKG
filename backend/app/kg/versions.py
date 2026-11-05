@@ -255,7 +255,12 @@ async def ensure_draft(driver: GraphDriver, kg_id: str) -> str:
         return gid
     if kg.latest:
         await copy_group(driver, version_group(kg_id, kg.latest), gid)
-    await _q(driver, 'MATCH (k:KnowledgeGraph {id: $id}) SET k.draft_base = $n', id=kg_id, n=kg.latest)
+    await _q(
+        driver,
+        'MATCH (k:KnowledgeGraph {id: $id}) SET k.draft_base = $n, k.draft_ontology = k.ontology',
+        id=kg_id,
+        n=kg.latest,
+    )
     return gid
 
 
@@ -268,6 +273,7 @@ async def _record_version(
         'MATCH (k:KnowledgeGraph {id: $id}) '
         'CREATE (v:Version {kg_id: $id, n: $n, group_id: $g, kind: $kind, message: $msg, author: $author, '
         '  created_at: $now, nodes: $nodes, edges: $edges, parent: $parent}) '
+        'SET v.ontology = coalesce(k.draft_ontology, k.ontology) '
         'CREATE (k)-[:HAS_VERSION]->(v) '
         'WITH v OPTIONAL MATCH (p:Version {kg_id: $id, n: $parent}) '
         'FOREACH (_ IN CASE WHEN p IS NULL THEN [] ELSE [1] END | CREATE (v)-[:PARENT]->(p)) '
@@ -294,6 +300,12 @@ async def commit(driver: GraphDriver, kg_id: str, message: str, *, kind: str = '
     n = kg.latest + 1
     await copy_group(driver, draft_group(kg_id), version_group(kg_id, n))
     version = await _record_version(driver, kg_id, n, kind, message, author, kg.draft_base or None)
+    await _q(
+        driver,
+        'MATCH (k:KnowledgeGraph {id: $id}), (v:Version {kg_id: $id, n: $n}) SET k.ontology = v.ontology',
+        id=kg_id,
+        n=n,
+    )
     await discard_draft(driver, kg_id)
     return version
 
@@ -305,12 +317,21 @@ async def restore(driver: GraphDriver, kg_id: str, k: int, message: str = '', *,
         raise ValueError(f'version v{k} does not exist')
     n = kg.latest + 1
     await copy_group(driver, version_group(kg_id, k), version_group(kg_id, n))
-    return await _record_version(driver, kg_id, n, 'restore', message or f'Restore dari v{k}', author, k)
+    version = await _record_version(driver, kg_id, n, 'restore', message or f'Restore dari v{k}', author, k)
+    await _q(
+        driver,
+        'MATCH (k:KnowledgeGraph {id: $id}), (old:Version {kg_id: $id, n: $old}), '
+        '(v:Version {kg_id: $id, n: $n}) SET v.ontology = old.ontology, k.ontology = old.ontology',
+        id=kg_id,
+        old=k,
+        n=n,
+    )
+    return version
 
 
 async def discard_draft(driver: GraphDriver, kg_id: str) -> int:
     deleted = await delete_group(driver, draft_group(kg_id))
-    await _q(driver, 'MATCH (k:KnowledgeGraph {id: $id}) REMOVE k.draft_base', id=kg_id)
+    await _q(driver, 'MATCH (k:KnowledgeGraph {id: $id}) REMOVE k.draft_base, k.draft_ontology', id=kg_id)
     return deleted
 
 
