@@ -48,7 +48,6 @@ export default function VersionListItem({ version, latest, role, onSelect }: Ver
           </span>
           <span className="text-muted-foreground block text-xs">{version.size}</span>
         </span>
-        {role && <Badge variant="outline">{role === 'base' ? 'basis' : 'banding'}</Badge>}
       </button>
     </li>
   )

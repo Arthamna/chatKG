@@ -64,6 +64,7 @@ def build_generation(s: Settings, budget: QuotaBudget):
             api_key=s.openrouter_api_key, model=s.openrouter_model, temperature=0, max_tokens=s.openrouter_max_tokens
         ),
         budget,
+        incomplete_retries=s.openrouter_incomplete_retries,
     )
 
 

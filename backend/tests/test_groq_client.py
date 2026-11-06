@@ -66,6 +66,17 @@ async def test_routes_small_prompts_and_settles_usage():
     assert completions.calls[1]['model'] == 'openai/gpt-oss-120b'
 
 
+async def test_job_model_override_applies_to_all_prompt_sizes():
+    client, completions, _, _ = make_client()
+    messages = [Message(role='user', content='u')]
+
+    with client.use_model('chosen/model'):
+        await client.generate_response(messages, model_size=ModelSize.small)
+        await client.generate_response(messages, model_size=ModelSize.medium)
+
+    assert [call['model'] for call in completions.calls] == ['chosen/model', 'chosen/model']
+
+
 async def test_429_waits_retry_after_then_succeeds():
     client, completions, _, slept = make_client(fail_first=2)
     text, billed = await client.complete(

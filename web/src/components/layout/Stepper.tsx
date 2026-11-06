@@ -3,7 +3,7 @@ import { Check } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
-const STEPS = ['Upload chat', 'Tinjau tipe AI', 'Ekstraksi & review', 'Commit']
+const STEPS = ['Upload chat', 'Tinjau hasil AI', 'Ekstraksi & review', 'Commit']
 
 /** Keep the current import step visible on narrow screens. */
 export default function Stepper({ active }: { active: number }) {

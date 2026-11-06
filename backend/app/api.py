@@ -142,10 +142,12 @@ class JobIn(BaseModel):
 class SchemaEdit(BaseModel):
     revision: str
     ontology: Ontology
+    extraction_instructions: str = Field('', max_length=4000)
 
 
 class SchemaJobIn(BaseModel):
     force: bool = False
+    model: str | None = None
 
 
 def _kg_json(kg: V.KnowledgeGraph) -> dict[str, Any]:
@@ -179,6 +181,33 @@ def _preview(sid: str, prepared, filename: str) -> dict[str, Any]:
     }
 
 
+async def _duplicate_extractions(driver, content_hash: str) -> list[dict[str, Any]]:
+    """Find drafts/versions that already contain episodes from this exact chat export."""
+    prefix = f'wa:{content_hash}:'
+    draft_rows = await V._q(
+        driver,
+        'MATCH (k:KnowledgeGraph) '
+        "MATCH (e:Episodic {group_id: 'kg_' + k.id + '__draft'}) "
+        'WHERE e.name STARTS WITH $prefix '
+        'RETURN k.id AS kg_id, k.name AS kg_name, "draft" AS version, count(e) AS episodes',
+        prefix=prefix,
+    )
+    version_rows = await V._q(
+        driver,
+        'MATCH (k:KnowledgeGraph)-[:HAS_VERSION]->(v:Version) '
+        'MATCH (e:Episodic {group_id: v.group_id}) WHERE e.name STARTS WITH $prefix '
+        'RETURN k.id AS kg_id, k.name AS kg_name, "v" + toString(v.n) AS version, '
+        'v.n AS version_number, count(e) AS episodes ORDER BY v.n DESC',
+        prefix=prefix,
+    )
+    found: dict[str, dict[str, Any]] = {}
+    for row in draft_rows:
+        found[row['kg_id']] = dict(row)
+    for row in version_rows:
+        found.setdefault(row['kg_id'], dict(row))
+    return sorted(found.values(), key=lambda row: (row['kg_name'].lower(), row['kg_id']))
+
+
 def _routes(app: FastAPI) -> None:
     @app.exception_handler(SchemaConflict)
     async def _schema_error(request: Request, exc: SchemaConflict):
@@ -197,7 +226,7 @@ def _routes(app: FastAPI) -> None:
         runner = request.app.state.runner
         jobs = await runner.list(kg_id)
         if any(
-            (j['status'] in ('queued', 'running', 'waiting_quota') or j['id'] == runner._current)
+            (j['status'] in ('queued', 'running', 'retrying', 'waiting_quota') or j['id'] == runner._current)
             and j.get('kind', 'ingest') == 'ingest'
             for j in jobs
         ):
@@ -221,9 +250,8 @@ def _routes(app: FastAPI) -> None:
             'llm': bool(request.app.state.llm),
             'llm_provider': s.llm_provider,
             'llm_model': s.llm_model,
-            'llm_models': [s.openrouter_model]
-            if s.llm_provider == 'openrouter'
-            else [s.groq_model, s.groq_small_model],
+            'llm_models': s.llm_models,
+            'default_tz': s.default_tz,
             'neo4j': neo4j,
             'neo4j_uri': s.neo4j_uri,
             'groq': s.llm_provider == 'groq' and bool(request.app.state.llm),
@@ -307,6 +335,9 @@ def _routes(app: FastAPI) -> None:
         except (UnicodeDecodeError, ValueError) as e:
             raise HTTPException(422, str(e)) from e
         sid = f'{kg_id}-{prepared.source_id}'
+        duplicates = await _duplicate_extractions(_d(request), prepared.source_id)
+        if duplicates:
+            return {**_preview(sid, prepared, file.filename or 'chat.txt'), 'duplicate_extractions': duplicates}
         upload_dir = s.data_dir / 'uploads'
         upload_dir.mkdir(parents=True, exist_ok=True)
         path = upload_dir / f'{prepared.source_id}.txt'
@@ -323,18 +354,27 @@ def _routes(app: FastAPI) -> None:
             date_order=date_order or None,
             counts=prepared.parsed.counts,
         )
-        preview = _preview(sid, prepared, file.filename or 'chat.txt')
-        preview['schema_job'] = (
-            await request.app.state.runner.submit(kg_id, sid, kind='schema') if request.app.state.llm else None
-        )
-        return preview
+        return {**_preview(sid, prepared, file.filename or 'chat.txt'), 'duplicate_extractions': []}
 
     @app.post('/api/kgs/{kg_id}/sources/{source_id}/schema-jobs', status_code=202)
     async def schema_job(request: Request, kg_id: str, source_id: str, body: SchemaJobIn | None = None):
         await source_for(request, kg_id, source_id)
         if not request.app.state.llm:
             raise HTTPException(503, 'API key LLM belum diisi; periksa konfigurasi provider')
-        return await request.app.state.runner.submit(kg_id, source_id, kind='schema', force=bool(body and body.force))
+        s: Settings = request.app.state.settings
+        model = body.model if body and body.model else s.llm_model
+        if model not in s.llm_models:
+            raise HTTPException(422, f'Model {model!r} tidak ada dalam allowlist provider')
+        if s.llm_provider == 'openrouter':
+            from app.ai.openrouter_llm import free_model
+
+            try:
+                free_model(model)
+            except ValueError as e:
+                raise HTTPException(422, str(e)) from e
+        return await request.app.state.runner.submit(
+            kg_id, source_id, kind='schema', force=bool(body and body.force), model=model
+        )
 
     @app.get('/api/kgs/{kg_id}/sources/{source_id}/schema')
     async def source_schema(request: Request, kg_id: str, source_id: str):
@@ -344,7 +384,13 @@ def _routes(app: FastAPI) -> None:
     async def update_schema(request: Request, kg_id: str, source_id: str, body: SchemaEdit):
         src = await source_for(request, kg_id, source_id)
         try:
-            return await edit_proposal(_d(request), src, body.revision, body.ontology)
+            return await edit_proposal(
+                _d(request),
+                src,
+                body.revision,
+                body.ontology,
+                extraction_instructions=body.extraction_instructions,
+            )
         except SchemaConflict:
             raise
         except ValueError as e:

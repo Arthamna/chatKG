@@ -49,6 +49,7 @@ class FakeGeneration:
         self.budget = QuotaBudget(Limits())
         self.ontology = example_schema()
         self.ingested = []
+        self.instructions = []
         self.discoveries = 0
         self.fail_after = None
 
@@ -85,6 +86,7 @@ def flow_client(tmp_path, monkeypatch):
 
     async def ingest(graphiti, episodes, *, group_id, instructions, progress, ontology):
         fake.ingested.append(ontology.model_dump())
+        fake.instructions.append(instructions)
         known = await existing_episodes(graphiti, group_id)
         for i, ep in enumerate(episodes, 1):
             if ep.name in known:
@@ -176,7 +178,12 @@ def upload(client, kg, extra=''):
     )
     assert result.status_code == 201, result.text
     preview = result.json()
-    job = wait_job(client, preview['schema_job']['id'])
+    assert 'schema_job' not in preview
+    mapping = client.post(
+        f'/api/kgs/{kg}/sources/{preview["source_id"]}/schema-jobs', json={'model': 'openrouter/free'}
+    )
+    assert mapping.status_code == 202, mapping.text
+    job = wait_job(client, mapping.json()['id'])
     assert job['status'] == 'done', job
     schema_url = f'/api/kgs/{kg}/sources/{preview["source_id"]}/schema'
     return preview, schema_url, client.get(schema_url).json()
@@ -197,11 +204,19 @@ def test_upload_review_dynamic_extraction_and_versioned_schema(flow_client):
     kg = new_kg(c)
     preview, url, schema = upload(c, kg)
     assert schema['sampled_episodes'] == 4
+    assert schema['model'] == 'openrouter/free'
     assert c.get(f'/api/kgs/{kg}').json()['stats']['nodes'] == 0  # discovery must not create a graph
     assert not c.fake_generation.ingested
     edited = copy.deepcopy(schema['ontology'])
     edited['entity_types'][1]['description'] = 'Produk yang dibicarakan'
-    result = c.put(url, json={'revision': schema['revision'], 'ontology': edited})
+    result = c.put(
+        url,
+        json={
+            'revision': schema['revision'],
+            'ontology': edited,
+            'extraction_instructions': 'Abaikan proyek lama.',
+        },
+    )
     assert result.status_code == 200, result.text
     saved = result.json()
     assert c.put(url, json={'revision': schema['revision'], 'ontology': edited}).status_code == 409
@@ -216,6 +231,9 @@ def test_upload_review_dynamic_extraction_and_versioned_schema(flow_client):
         == 409
     )
     job = extract(c, kg, preview['source_id'], saved)
+    assert job['model'] == 'openrouter/free'
+    assert 'Instruksi tambahan pengguna (berlaku hanya jika tidak bertentangan' in c.fake_generation.instructions[-1]
+    assert c.fake_generation.instructions[-1].endswith('Abaikan proyek lama.')
     assert c.fake_generation.ingested[-1] == edited
     graph = c.get(f'/api/kgs/{kg}/graph').json()
     assert {n['type'] for n in graph['nodes']} == {'Person', 'Product'}
@@ -230,7 +248,7 @@ def test_upload_review_dynamic_extraction_and_versioned_schema(flow_client):
     p2, url2, schema2 = upload(c, kg, '\n[11/5/26, 1:00:00 PM] Anda: Toko baru sudah buka\n')
     assert schema2['baseline'] == edited
     bad = copy.deepcopy(extended)
-    bad['entity_types'][1]['attributes'] = []
+    bad['entity_types'][1]['attributes'][0]['type'] = 'string'
     assert c.put(url2, json={'revision': schema2['revision'], 'ontology': bad}).status_code == 422
     extract(c, kg, p2['source_id'], schema2)
     assert c.post(f'/api/kgs/{kg}/versions', json={'message': 'v2'}).status_code == 201

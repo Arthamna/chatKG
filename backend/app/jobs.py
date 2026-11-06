@@ -14,6 +14,7 @@ import json
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,7 @@ from app.kg.schema_store import SchemaConflict, proposal, save_proposal, source_
 
 logger = logging.getLogger(__name__)
 
-ACTIVE = ('queued', 'running', 'waiting_quota')
+ACTIVE = ('queued', 'running', 'retrying', 'waiting_quota')
 MAX_LOG = 200
 
 IngestFn = Callable[..., Awaitable[Any]]
@@ -122,17 +123,20 @@ class JobRunner:
         kind: str = 'ingest',
         snapshot: dict | None = None,
         force: bool = False,
+        model: str | None = None,
     ) -> dict[str, Any]:
         async with self.submission_lock:
-            return await self._submit(kg_id, source_id, kind=kind, snapshot=snapshot, force=force)
+            return await self._submit(kg_id, source_id, kind=kind, snapshot=snapshot, force=force, model=model)
 
-    async def _submit(self, kg_id, source_id, *, kind, snapshot, force):
+    async def _submit(self, kg_id, source_id, *, kind, snapshot, force, model):
         source = await source_record(self.driver, source_id)
         if not source or source['kg_id'] != kg_id:
             raise ValueError('Source bukan milik KG ini')
         jobs = [j for j in await self.list(kg_id) if j['source_id'] == source_id and j.get('kind', 'ingest') == kind]
         for job in jobs:
             if job['status'] in ACTIVE:
+                if kind == 'schema' and model and job.get('model') != model:
+                    raise SchemaConflict('Pemetaan aktif memakai model lain; batalkan sebelum mengganti model')
                 if (
                     kind == 'ingest'
                     and snapshot
@@ -160,18 +164,23 @@ class JobRunner:
                 if present and previous and previous['revision'] == snapshot['revision'] and job['status'] == 'done':
                     return job
                 if present and job.get('done', 0) and (not previous or previous['revision'] != snapshot['revision']):
-                    raise SchemaConflict('Source sudah diekstrak dengan skema lain; edit graph atau unggah file baru')
+                    raise SchemaConflict(
+                        'Chat ini sudah pernah diekstrak ke graph aktif dengan revisi skema berbeda. '
+                        'Ekstraksi ulang diblokir agar fakta tidak duplikat. Jika hasil lama masih di draft, '
+                        'buang draft lalu ulangi; jika sudah di-commit, edit graph atau unggah export yang berbeda.'
+                    )
         job_id = uuid.uuid4().hex[:12]
         await V._q(
             self.driver,
             'CREATE (j:IngestJob {id: $id, kg_id: $kg, source_id: $sid, status: "queued", total: 0, done: 0, '
             '  nodes: 0, edges: 0, error: null, resume_at: null, created_at: $now, updated_at: $now, log: "[]", '
-            '  kind: $kind, schema_snapshot: $snapshot, source_json: $source})',
+            '  kind: $kind, model: $model, schema_snapshot: $snapshot, source_json: $source})',
             id=job_id,
             kg=kg_id,
             sid=source_id,
             now=_now(),
             kind=kind,
+            model=model or (snapshot or {}).get('model') or self.settings.llm_model,
             snapshot=json.dumps(snapshot) if snapshot else None,
             source=json.dumps(
                 {
@@ -213,7 +222,15 @@ class JobRunner:
             if self._current == job_id:
                 raise SchemaConflict('Job masih berhenti; coba lanjutkan lagi setelah beberapa saat')
             self._cancelled.discard(job_id)
-            await self._update(job_id, status='queued', error=None, resume_at=None, finished_at=None)
+            await self._update(
+                job_id,
+                status='queued',
+                error=None,
+                resume_at=None,
+                finished_at=None,
+                retry_attempt=None,
+                retry_reason=None,
+            )
             await self.queue.put(job_id)
             return await self.get(job_id)
 
@@ -270,18 +287,20 @@ class JobRunner:
             return
         snapshot = json.loads(job['schema_snapshot']) if job.get('schema_snapshot') else None
         ontology = Ontology.model_validate(snapshot['ontology']) if snapshot else None
+        active_ontology = (
+            Ontology.model_validate(snapshot.get('active_ontology', snapshot['ontology'])) if snapshot else ontology
+        )
         if snapshot:
             baseline = await active_schema(self.driver, job['kg_id'])
-            if baseline.revision not in (snapshot['base_revision'], ontology.revision):
+            if baseline.revision not in (snapshot['base_revision'], active_ontology.revision):
                 raise SchemaConflict('Skema KG berubah saat antre; petakan ulang')
-            ontology.extend(baseline)
         group_id = await V.ensure_draft(self.driver, job['kg_id'])
-        if ontology:
+        if active_ontology:
             await V._q(
                 self.driver,
                 'MATCH (k:KnowledgeGraph {id: $kg}) SET k.draft_ontology = $schema',
                 kg=job['kg_id'],
-                schema=ontology.model_dump_json(),
+                schema=active_ontology.model_dump_json(),
             )
         episodes = prepared.episodes
         await self._update(job_id, status='running', total=len(episodes), started_at=_now(), group_id=group_id)
@@ -330,6 +349,23 @@ class JobRunner:
         previous = getattr(self.budget, 'on_wait', None)
         if self.budget is not None:
             self.budget.on_wait = on_wait
+
+        def on_retry(attempt: int, maximum: int, reason: str, delay: float) -> None:
+            resume = (datetime.now(UTC) + timedelta(seconds=delay)).isoformat()
+            updates.put_nowait(
+                (
+                    'update',
+                    {
+                        'status': 'retrying',
+                        'resume_at': resume,
+                        'retry_attempt': attempt,
+                        'retry_max': maximum,
+                        'retry_reason': 'respons OpenRouter terpotong',
+                    },
+                )
+            )
+            updates.put_nowait(('log', f'respons OpenRouter terpotong; mencoba lagi ({attempt}/{maximum})'))
+
         try:
             instructions = build_instructions(
                 owner=src['owner'],
@@ -340,15 +376,32 @@ class JobRunner:
                 at=episodes[0].start_local if episodes else None,
                 glossary=ontology.glossary if ontology else None,
             )
+            extra = (snapshot or {}).get('extraction_instructions', '').strip()
+            if extra:
+                instructions += (
+                    '\n\nInstruksi tambahan pengguna (berlaku hanya jika tidak bertentangan dengan aturan di atas):\n'
+                    f'{extra}'
+                )
             kwargs = {'ontology': ontology} if ontology else {}
-            report = await self.ingest_fn(
-                self.graphiti,
-                episodes,
-                group_id=group_id,
-                instructions=instructions,
-                progress=progress,
-                **kwargs,
+            model_context = (
+                self.llm.use_model(job.get('model') or self.settings.llm_model)
+                if self.llm is not None and hasattr(self.llm, 'use_model')
+                else nullcontext()
             )
+            retry_context = (
+                self.llm.use_retry_callback(on_retry)
+                if self.llm is not None and hasattr(self.llm, 'use_retry_callback')
+                else nullcontext()
+            )
+            with model_context, retry_context:
+                report = await self.ingest_fn(
+                    self.graphiti,
+                    episodes,
+                    group_id=group_id,
+                    instructions=instructions,
+                    progress=progress,
+                    **kwargs,
+                )
         except asyncio.CancelledError:
             if job_id in self._cancelled:
                 await updates.join()
@@ -398,8 +451,34 @@ class JobRunner:
         previous = getattr(self.budget, 'on_wait', None)
         if self.budget is not None:
             self.budget.on_wait = on_wait
+
+        def on_retry(attempt, maximum, reason, delay):
+            pending.append(
+                asyncio.create_task(
+                    self._update(
+                        job['id'],
+                        status='retrying',
+                        retry_attempt=attempt,
+                        retry_max=maximum,
+                        retry_reason='respons OpenRouter terpotong',
+                        resume_at=(datetime.now(UTC) + timedelta(seconds=delay)).isoformat(),
+                    )
+                )
+            )
+            pending.append(
+                asyncio.create_task(
+                    self._log(job['id'], f'respons OpenRouter terpotong; mencoba lagi ({attempt}/{maximum})')
+                )
+            )
+
         try:
-            ontology, sampled = await discover_schema(self.llm, prepared, baseline)
+            chosen_model = job.get('model') or self.settings.llm_model
+            model_context = self.llm.use_model(chosen_model) if hasattr(self.llm, 'use_model') else nullcontext()
+            retry_context = (
+                self.llm.use_retry_callback(on_retry) if hasattr(self.llm, 'use_retry_callback') else nullcontext()
+            )
+            with model_context, retry_context:
+                ontology, sampled = await discover_schema(self.llm, prepared, baseline, model=chosen_model)
         finally:
             if self.budget is not None:
                 self.budget.on_wait = previous
@@ -408,7 +487,15 @@ class JobRunner:
         current = await source_record(self.driver, src['id'])
         if not current or source_key(current) != source_key(src):
             raise SchemaConflict('Mapping peserta berubah saat pemetaan; petakan ulang')
-        await save_proposal(self.driver, src, ontology, baseline, job_id=job['id'], sampled=sampled)
+        await save_proposal(
+            self.driver,
+            src,
+            ontology,
+            baseline,
+            job_id=job['id'],
+            sampled=sampled,
+            model=job.get('model') or self.settings.llm_model,
+        )
         await self._update(
             job['id'],
             status='done',

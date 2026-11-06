@@ -34,6 +34,7 @@ def make_client(replies, **limits):
         LLMConfig(api_key='test', model='openrouter/free', temperature=0),
         budget,
         client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+        sleep=sleep,
     )
     return client, completions, waits
 
@@ -110,6 +111,29 @@ async def test_structured_output_recovers_from_incomplete_response(incomplete):
     assert [call.kwargs['max_tokens'] for call in calls.create.await_args_list] == [8192, 8192]
     assert 'lengkap dan ringkas' in calls.create.call_args.kwargs['messages'][-1]['content']
     assert client.budget.usage(client.quota_key)['requests_day'] == 2
+
+
+async def test_incomplete_response_retries_three_times_and_reports_each_retry():
+    incomplete = response('', finish='length')
+    client, calls, waits = make_client([incomplete, incomplete, incomplete, response()])
+    retries = []
+    client.on_retry = lambda attempt, maximum, reason, delay: retries.append((attempt, maximum, delay))
+
+    result = await client.generate_response([Message(role='user', content='test')], response_model=Output)
+
+    assert result == {'ok': True}
+    assert calls.create.await_count == 4
+    assert retries == [(1, 3, 1), (2, 3, 2), (3, 3, 4)]
+    assert waits == [1, 2, 4]
+
+
+async def test_job_model_override_is_used_for_structured_generation():
+    client, calls, _ = make_client([response()])
+
+    with client.use_model('vendor/chosen:free'):
+        await client.generate_response([Message(role='user', content='test')], response_model=Output)
+
+    assert calls.create.call_args.kwargs['model'] == 'vendor/chosen:free'
 
 
 async def test_auth_failure_stops_without_retry():

@@ -153,7 +153,7 @@ export default function VersionsPage() {
         <Card className="flex shrink-0 flex-col gap-3 p-6 lg:w-80 xl:w-[440px]">
           <div className="space-y-1.5">
             <CardTitle>Versi ({versions.length})</CardTitle>
-            <CardDescription>Klik versi untuk dibandingkan dengan basis</CardDescription>
+            <CardDescription>Pilih dua versi untuk melihat perubahannya</CardDescription>
           </div>
           <ul className="space-y-2.5">
             {rows.map((r) => (
@@ -175,8 +175,8 @@ export default function VersionsPage() {
         <Card className="flex min-w-0 flex-1 flex-col gap-4 p-4 md:p-6">
           <div className="flex flex-wrap items-center gap-2.5">
             <Select value={base} onValueChange={(v) => set(v, compare)}>
-              <SelectTrigger className="w-28" aria-label="Versi basis">
-                <SelectValue placeholder="basis" />
+              <SelectTrigger className="w-28" aria-label="Versi kiri">
+                <SelectValue placeholder="Versi" />
               </SelectTrigger>
               <SelectContent>
                 {ids.filter((v) => v !== compare).map((v) => (
@@ -188,8 +188,8 @@ export default function VersionsPage() {
             </Select>
             <ArrowRight className="text-muted-foreground size-4" />
             <Select value={compare} onValueChange={(v) => set(base === v ? '' : base, v)}>
-              <SelectTrigger className="w-28" aria-label="Versi pembanding">
-                <SelectValue placeholder="banding" />
+              <SelectTrigger className="w-28" aria-label="Versi kanan">
+                <SelectValue placeholder="Versi" />
               </SelectTrigger>
               <SelectContent>
                 {ids.map((v) => (
@@ -213,7 +213,7 @@ export default function VersionsPage() {
           {!ready ? (
             <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 rounded-md border border-dashed p-6 text-center text-sm">
               <Database className="size-6" />
-              <p>{rows.length < 2 ? 'Butuh minimal dua versi (atau versi + draft) untuk dibandingkan.' : 'Pilih versi basis dan pembanding.'}</p>
+              <p>{rows.length < 2 ? 'Butuh minimal dua versi (atau versi + draft) untuk dibandingkan.' : 'Pilih dua versi.'}</p>
             </div>
           ) : (
             <Tabs defaultValue="graph" className="flex min-h-0 flex-1 flex-col gap-4">

@@ -40,7 +40,7 @@ def sample_episodes(episodes) -> list[dict]:
     return samples
 
 
-async def discover_schema(llm, prepared, baseline: Ontology) -> tuple[Ontology, int]:
+async def discover_schema(llm, prepared, baseline: Ontology, *, model: str | None = None) -> tuple[Ontology, int]:
     samples = sample_episodes(prepared.episodes)
     if not samples:
         raise ValueError('Tidak ada cuplikan teks yang dapat dipetakan; tambahkan teks dengan baris lebih pendek')
@@ -56,7 +56,7 @@ async def discover_schema(llm, prepared, baseline: Ontology) -> tuple[Ontology, 
     messages = [Message(role='system', content=DISCOVERY_PROMPT), Message(role='user', content=content)]
     # Schema references and compatibility need semantic checks beyond JSON Schema.
     for attempt in range(3):
-        result = await llm.generate_response(messages, response_model=Ontology)
+        result = await llm.generate_response(messages, response_model=Ontology, model=model)
         try:
             ontology = Ontology.model_validate(result)
             if not ontology.entity_types:

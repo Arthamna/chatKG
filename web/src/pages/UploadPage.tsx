@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, CircleAlert, FileText, LoaderCircle, RefreshCw } from 'lucide-react'
+import { CircleAlert, FileText, LoaderCircle, Network, RefreshCw, Sparkles } from 'lucide-react'
 
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 import PageHeader from '@/components/layout/PageHeader'
 import Stepper from '@/components/layout/Stepper'
 import FileDropzone from '@/components/upload/FileDropzone'
@@ -31,20 +32,28 @@ export default function UploadPage() {
   const [params, setParams] = useSearchParams()
   const [currentKg, setCurrentKg] = useCurrentKg()
   const kgs = useApi(() => api.listKgs(), [])
+  const health = useApi(() => api.health(), [])
   const kg = params.get('kg') ?? currentKg ?? ''
 
   const [file, setFile] = useState<File | null>(null)
   const [owner, setOwner] = useState(readOwner)
   const [aliases, setAliases] = useState('')
-  const [tz, setTz] = useState('Asia/Jakarta')
+  const [tz, setTz] = useState('')
   const [dateOrder, setDateOrder] = useState('auto')
+  const [model, setModel] = useState('')
   const [preview, setPreview] = useState<SourcePreview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
+  const [duplicateTarget, setDuplicateTarget] = useState('')
 
   useEffect(() => {
     if (!kg && kgs.data?.length) setParams({ kg: kgs.data[0].id }, { replace: true })
   }, [kg, kgs.data, setParams])
+
+  useEffect(() => {
+    if (!model && health.data?.llm_model) setModel(health.data.llm_model)
+  }, [health.data?.llm_model, model])
 
   const kgInfo = kgs.data?.find((k) => k.id === kg)
 
@@ -56,6 +65,7 @@ export default function UploadPage() {
     }
     setBusy(true)
     setError(null)
+    setDuplicateOpen(false)
     try {
       localStorage.setItem(OWNER_KEY, owner.trim())
     } catch {
@@ -64,8 +74,13 @@ export default function UploadPage() {
     try {
       const p = await api.uploadSource(kg, f, { owner: owner.trim(), aliases, tz, dateOrder: dateOrder === 'auto' ? '' : dateOrder })
       setPreview(p)
-      setCurrentKg(kg)
-      navigate(`/upload/model?kg=${encodeURIComponent(kg)}&source=${encodeURIComponent(p.source_id)}`)
+      if (p.duplicate_extractions.length) {
+        setDuplicateTarget(p.duplicate_extractions[0].kg_id)
+        setDuplicateOpen(true)
+      } else {
+        setDuplicateTarget('')
+        setCurrentKg(kg)
+      }
     } catch (e) {
       setPreview(null)
       setError(errorText(e))
@@ -75,6 +90,20 @@ export default function UploadPage() {
   }
 
   const others = preview?.participants.filter((p) => p !== owner.trim()) ?? []
+
+  const mapWithAi = async () => {
+    if (!preview || !model || preview.duplicate_extractions.length) return
+    setBusy(true)
+    setError(null)
+    try {
+      const job = await api.startSchemaJob(kg, preview.source_id, model)
+      navigate(`/upload/model?kg=${encodeURIComponent(kg)}&source=${encodeURIComponent(preview.source_id)}&job=${job.id}`)
+    } catch (e) {
+      setError(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="workspace-page flex min-h-full flex-col gap-6">
@@ -112,7 +141,7 @@ export default function UploadPage() {
                     <LoaderCircle className="mr-1 size-3 animate-spin" /> Memproses…
                   </Badge>
                 ) : preview ? (
-                  <Badge variant="success">Terparse</Badge>
+                  preview.duplicate_extractions.length ? <Badge variant="warning">Sudah diekstrak</Badge> : <Badge variant="success">Terparse</Badge>
                 ) : error ? (
                   <Badge variant="destructive">Gagal</Badge>
                 ) : null}
@@ -174,21 +203,36 @@ export default function UploadPage() {
             <Textarea value={aliases} onChange={(e) => setAliases(e.target.value)} rows={2} placeholder={'Leon TC 24=Leon\nsatu per baris'} />
           </Field>
           {others.length > 0 && <p className="text-muted-foreground -mt-2 text-xs">Nama di file: {others.join(', ')}</p>}
-          <div className="grid gap-3 min-[480px]:grid-cols-2">
-            <Field label="Zona waktu">
-              <Input value={tz} onChange={(e) => setTz(e.target.value)} className="w-full" />
-            </Field>
-            <SelectField
-              label="Format tanggal"
-              value={dateOrder}
-              onChange={setDateOrder}
-              options={[
-                { value: 'auto', label: 'Deteksi' },
-                { value: 'MDY', label: 'M/D/YY' },
-                { value: 'DMY', label: 'D/M/YY' }
-              ]}
-            />
-          </div>
+          <SelectField
+            label="Model AI"
+            value={model}
+            onChange={setModel}
+            options={(health.data?.llm_models ?? []).map((value) => ({ value, label: value }))}
+          />
+          <details className="rounded-md border p-3">
+            <summary className="cursor-pointer text-sm font-medium">Pengaturan waktu</summary>
+            <div className="mt-3 grid gap-3 min-[480px]:grid-cols-2">
+              <Field label="Zona waktu">
+                <Input
+                  value={tz}
+                  onChange={(e) => setTz(e.target.value)}
+                  placeholder={health.data?.default_tz ?? 'Asia/Jakarta'}
+                  className="w-full"
+                />
+              </Field>
+              <SelectField
+                label="Format tanggal"
+                value={dateOrder}
+                onChange={setDateOrder}
+                options={[
+                  { value: 'auto', label: 'Deteksi otomatis' },
+                  { value: 'MDY', label: 'M/D/YY' },
+                  { value: 'DMY', label: 'D/M/YY' }
+                ]}
+              />
+            </div>
+            <p className="text-muted-foreground mt-2 text-xs">Ubah hanya jika tanggal atau waktu pada preview tidak sesuai.</p>
+          </details>
           {file && (
             <Button variant="outline" size="sm" disabled={busy} onClick={() => send()}>
               <RefreshCw /> Terapkan mapping
@@ -207,12 +251,52 @@ export default function UploadPage() {
             <Button variant="outline" size="sm" onClick={() => navigate('/kg')}>
               Batal
             </Button>
-            <Button size="sm" disabled={!preview || busy} onClick={() => preview && navigate(`/upload/model?kg=${kg}&source=${preview.source_id}`)}>
-              Tinjau tipe hasil AI <ArrowRight />
+            <Button size="sm" disabled={!preview || busy || !model || !health.data?.llm || !!preview.duplicate_extractions.length} onClick={mapWithAi}>
+              <Sparkles /> {busy ? 'Memulai AI…' : 'Petakan dengan AI'}
             </Button>
           </div>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={duplicateOpen}
+        onOpenChange={(open) => {
+          setDuplicateOpen(open)
+          if (!open) {
+            setPreview(null)
+            setFile(null)
+            setDuplicateTarget('')
+          }
+        }}
+        title="Chat ini sudah pernah diekstrak"
+        description="Knowledge graph yang merujuk chat dengan isi identik sudah tersedia. Ekstraksi ulang diblokir agar fakta tidak terduplikasi."
+        confirmLabel="Beralih ke knowledge graph"
+        confirmIcon={<Network />}
+        confirmDisabled={!duplicateTarget}
+        onConfirm={() => {
+          const target = preview?.duplicate_extractions.find((item) => item.kg_id === duplicateTarget)
+          if (!target) return
+          setCurrentKg(target.kg_id)
+          navigate(`/kg/${encodeURIComponent(target.kg_id)}/graph?version=${encodeURIComponent(target.version)}`)
+        }}
+      >
+        {preview && preview.duplicate_extractions.length > 1 ? (
+          <SelectField
+            label="Knowledge graph"
+            value={duplicateTarget}
+            onChange={setDuplicateTarget}
+            options={preview.duplicate_extractions.map((item) => ({
+              value: item.kg_id,
+              label: `${item.kg_name} · ${item.version} · ${item.episodes} episode`
+            }))}
+          />
+        ) : preview?.duplicate_extractions[0] ? (
+          <div className="rounded-md border p-3 text-sm">
+            <p className="font-medium">{preview.duplicate_extractions[0].kg_name}</p>
+            <p className="text-muted-foreground">{preview.duplicate_extractions[0].version} · {preview.duplicate_extractions[0].episodes} episode</p>
+          </div>
+        ) : null}
+      </ConfirmDialog>
     </div>
   )
 }

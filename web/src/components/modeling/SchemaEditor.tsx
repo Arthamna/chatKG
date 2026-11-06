@@ -62,7 +62,7 @@ export default function SchemaEditor({ value, baseline, onChange }: Props) {
         return <div key={index} className="space-y-3 rounded-md border p-4">
           <div className="flex items-end gap-3">
             <div className="min-w-0 flex-1"><Field label="Nama tipe"><Input aria-label={`Nama tipe ${index + 1}`} className="w-full" value={t.name} disabled={!!old} onChange={(e) => renameEntity(index, e.target.value)} /></Field></div>
-            <Button variant="ghost" size="icon" tooltip="Hapus tipe" disabled={!!old} onClick={() => {
+            <Button variant="ghost" size="icon" tooltip={old ? 'Kecualikan tipe dari ekstraksi ini' : 'Hapus tipe'} onClick={() => {
               const remaining = relations.filter((r) => r.source !== t.name && r.target !== t.name)
               const used = new Set(remaining.map((r) => r.name))
               onChange({ ...value, entity_types: value.entity_types.filter((_, i) => i !== index),
@@ -78,7 +78,7 @@ export default function SchemaEditor({ value, baseline, onChange }: Props) {
               <Field label="Atribut"><Input aria-label={`Atribut ${j + 1} ${t.name}`} className="w-full" disabled={locked} value={a.name} onChange={(e) => updateAttribute(index, j, { name: e.target.value })} /></Field>
               {locked ? <Field label="Tipe"><Input className="w-full" disabled value={a.type} /></Field> : <SelectField label="Tipe atribut" value={a.type} onChange={(type) => updateAttribute(index, j, { type: type as SchemaAttribute['type'] })} options={['string', 'integer', 'number', 'boolean', 'datetime'].map((type) => ({ value: type, label: type }))} />}
               <Field label="Deskripsi atribut"><Input aria-label={`Deskripsi atribut ${a.name}`} className="w-full" value={a.description} onChange={(e) => updateAttribute(index, j, { description: e.target.value })} /></Field>
-              <Button variant="ghost" size="icon" tooltip="Hapus atribut" disabled={locked} onClick={() => setEntities(value.entity_types.map((x, i) => i === index ? { ...x, attributes: x.attributes.filter((_, k) => k !== j) } : x))}><Trash2 /></Button>
+              <Button variant="ghost" size="icon" tooltip={locked ? 'Kecualikan atribut dari ekstraksi ini' : 'Hapus atribut'} onClick={() => setEntities(value.entity_types.map((x, i) => i === index ? { ...x, attributes: x.attributes.filter((_, k) => k !== j) } : x))}><Trash2 /></Button>
             </div>
           })}
           <Button variant="outline" size="sm" onClick={() => setEntities(value.entity_types.map((x, i) => i === index ? { ...x, attributes: [...x.attributes, { name: nextName('attribute_', x.attributes.map((a) => a.name)), type: 'string', description: '' }] } : x))}><Plus /> Atribut</Button>
@@ -102,7 +102,7 @@ export default function SchemaEditor({ value, baseline, onChange }: Props) {
             {lockedPair ? <Field label="Sumber"><Input className="w-full" disabled value={r.source} /></Field> : <SelectField label="Sumber" value={r.source} options={names} onChange={(source) => update({ source })} />}
             <Field label="Relasi"><Input className="w-full" aria-label={`Relasi ${index + 1}`} disabled={lockedName} value={r.name} onChange={(e) => update({ name: e.target.value })} /></Field>
             {lockedPair ? <Field label="Target"><Input className="w-full" disabled value={r.target} /></Field> : <SelectField label="Target" value={r.target} options={names} onChange={(target) => update({ target })} />}
-            <Button variant="ghost" size="icon" tooltip="Hapus pasangan relasi" disabled={lockedPair} onClick={() => setRelations(relations.filter((_, i) => i !== index))}><Trash2 /></Button>
+            <Button variant="ghost" size="icon" tooltip={lockedPair ? 'Kecualikan relasi dari ekstraksi ini' : 'Hapus pasangan relasi'} onClick={() => setRelations(relations.filter((_, i) => i !== index))}><Trash2 /></Button>
           </div>
           <Field label="Deskripsi relasi"><Input className="w-full" value={r.description} onChange={(e) => update({ description: e.target.value })} /></Field>
           <Button variant="ghost" size="sm" onClick={() => setRelations([...relations, { ...r, source: names[0]?.value ?? '', target: names.find((n) => n.value !== r.target)?.value ?? r.target }])}><Plus /> Pasangan lain</Button>

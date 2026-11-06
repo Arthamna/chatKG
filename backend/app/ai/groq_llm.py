@@ -13,6 +13,7 @@ Differences from ``graphiti_core.llm_client.groq_client.GroqClient``:
 
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import re
@@ -100,6 +101,9 @@ class BudgetedGroqClient(LLMClient):
         self.budget = budget
         self.reasoning_effort = reasoning_effort or None
         self.client = client or AsyncGroq(api_key=config.api_key, max_retries=0)
+        self._model_override: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+            'groq_model_override', default=None
+        )
         # Models that rejected response_format=json_schema fall back to json_object.
         self._no_json_schema: set[str] = set()
 
@@ -107,12 +111,26 @@ class BudgetedGroqClient(LLMClient):
         return 'groq'
 
     def _pick_model(self, model: str | None, model_size: ModelSize) -> str:
+        if override := self._model_override.get():
+            return override
         if model:
             return model
         if model_size == ModelSize.small and self.small_model:
             return self.small_model
         assert self.model, 'LLMConfig.model is required'
         return self.model
+
+    def use_model(self, model: str):
+        client = self
+
+        class ModelOverride:
+            def __enter__(self):
+                self.token = client._model_override.set(model)
+
+            def __exit__(self, *_):
+                client._model_override.reset(self.token)
+
+        return ModelOverride()
 
     async def complete(
         self,

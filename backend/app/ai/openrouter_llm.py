@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 from datetime import UTC, datetime
@@ -45,10 +46,25 @@ def retry_seconds(value: str | None, fallback: float) -> float:
 class OpenRouterClient(LLMClient):
     quota_key = 'openrouter:free'
 
-    def __init__(self, config: LLMConfig, budget: QuotaBudget, *, client=None):
+    def __init__(
+        self,
+        config: LLMConfig,
+        budget: QuotaBudget,
+        *,
+        client=None,
+        incomplete_retries: int = 3,
+        sleep=asyncio.sleep,
+    ):
         free_model(config.model or '')
         super().__init__(config, cache=False)
         self.budget = budget
+        self.incomplete_retries = max(0, incomplete_retries)
+        self.retry_sleep = sleep
+        self.on_retry = None
+        self._model_override: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+            'openrouter_model_override', default=None
+        )
+        self._retry_callback: contextvars.ContextVar = contextvars.ContextVar('openrouter_retry_callback', default=None)
         self.client = client or AsyncOpenAI(
             api_key=config.api_key,
             base_url='https://openrouter.ai/api/v1',
@@ -58,6 +74,31 @@ class OpenRouterClient(LLMClient):
 
     def _get_provider_type(self):
         return 'openrouter'
+
+    def use_model(self, model: str):
+        free_model(model)
+        client = self
+
+        class ModelOverride:
+            def __enter__(self):
+                self.token = client._model_override.set(model)
+
+            def __exit__(self, *_):
+                client._model_override.reset(self.token)
+
+        return ModelOverride()
+
+    def use_retry_callback(self, callback):
+        client = self
+
+        class RetryCallback:
+            def __enter__(self):
+                self.token = client._retry_callback.set(callback)
+
+            def __exit__(self, *_):
+                client._retry_callback.reset(self.token)
+
+        return RetryCallback()
 
     async def complete(self, messages, *, model, max_tokens, temperature, json_mode, schema=None):
         model = free_model(model)
@@ -128,22 +169,30 @@ class OpenRouterClient(LLMClient):
             'content': 'Kembalikan langsung satu objek JSON yang lengkap dan ringkas. '
             'Gunakan deskripsi pendek dan pertahankan semua entri wajib.',
         }
-        for attempt in range(3):
+        incomplete_attempt = 0
+        schema_attempt = 0
+        while True:
             try:
                 content, _ = await self.complete(
                     msgs,
-                    model=model or self.model,
+                    model=self._model_override.get() or model or self.model,
                     max_tokens=max_tokens,
                     temperature=self.temperature,
                     json_mode=True,
                     schema=response_model,
                 )
             except IncompleteCompletion as e:
-                if attempt == 2:
+                if incomplete_attempt >= self.incomplete_retries:
                     raise
+                incomplete_attempt += 1
+                delay = 2 ** (incomplete_attempt - 1)
                 logger.warning('%s Mencoba lagi dengan instruksi output ringkas.', e)
                 if compact_output not in msgs:
                     msgs.append(compact_output)
+                callback = self._retry_callback.get() or self.on_retry
+                if callback:
+                    callback(incomplete_attempt, self.incomplete_retries, str(e), delay)
+                await self.retry_sleep(delay)
                 continue
             try:
                 data = json.loads(content)
@@ -154,6 +203,7 @@ class OpenRouterClient(LLMClient):
                     data = _declared_fields_only(data, response_model)
                 return data
             except (TypeError, ValueError, ValidationError) as e:
-                if attempt == 2:
+                schema_attempt += 1
+                if schema_attempt >= 3:
                     raise
                 msgs.append({'role': 'user', 'content': f'Perbaiki JSON sesuai skema respons: {str(e)[:500]}'})

@@ -33,7 +33,9 @@ class Settings(BaseSettings):
     llm_provider: Literal['openrouter', 'groq'] = 'openrouter'
     openrouter_api_key: str = ''
     openrouter_model: str = 'openrouter/free'
+    openrouter_models: str = ''
     openrouter_max_tokens: int = 4096
+    openrouter_incomplete_retries: int = 3
     openrouter_rpm: int = 100
     openrouter_rpd: int = 100
 
@@ -41,6 +43,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ''
     groq_model: str = 'openai/gpt-oss-120b'
     groq_small_model: str = 'openai/gpt-oss-20b'
+    groq_models: str = ''
     groq_reasoning_effort: str = 'low'  # gpt-oss only: low | medium | high | '' to omit
     groq_max_tokens: int = 4096
     # Free-tier quota per model (check console.groq.com/settings/limits; 0 = unlimited).
@@ -81,6 +84,15 @@ class Settings(BaseSettings):
     @property
     def llm_model(self) -> str:
         return self.openrouter_model if self.llm_provider == 'openrouter' else self.groq_model
+
+    @property
+    def llm_models(self) -> list[str]:
+        raw = self.openrouter_models if self.llm_provider == 'openrouter' else self.groq_models
+        fallback = (
+            [self.openrouter_model] if self.llm_provider == 'openrouter' else [self.groq_model, self.groq_small_model]
+        )
+        configured = [model.strip() for model in raw.split(',') if model.strip()] if raw else fallback
+        return list(dict.fromkeys([self.llm_model, *configured]))
 
 
 @lru_cache

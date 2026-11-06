@@ -17,10 +17,11 @@ import { viewToGraph } from '@/lib/graphView'
 import { when } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
-const ACTIVE: JobStatus[] = ['queued', 'running', 'waiting_quota']
+const ACTIVE: JobStatus[] = ['queued', 'running', 'retrying', 'waiting_quota']
 const STATUS: Record<JobStatus, { label: string; variant: 'info' | 'warning' | 'success' | 'destructive' | 'secondary' }> = {
   queued: { label: 'antre', variant: 'secondary' },
   running: { label: 'berjalan', variant: 'info' },
+  retrying: { label: 'mencoba lagi', variant: 'warning' },
   waiting_quota: { label: 'menunggu kuota', variant: 'warning' },
   done: { label: 'selesai', variant: 'success' },
   failed: { label: 'gagal', variant: 'destructive' },
@@ -41,7 +42,7 @@ export default function ExtractionPage() {
   const { reload } = job
 
   useEffect(() => {
-    if (j?.status === 'done') navigate(`/kg/${encodeURIComponent(kg)}/graph?version=draft`, { replace: true })
+    if (j?.status === 'done') navigate(`/upload/review?kg=${encodeURIComponent(kg)}`, { replace: true })
   }, [j?.status, kg, navigate])
 
   useEffect(() => {
@@ -95,6 +96,8 @@ export default function ExtractionPage() {
               <span className="text-muted-foreground text-right">
                 {j?.status === 'waiting_quota' && j.resume_at
                   ? `kuota LLM (${j.waiting_reason ?? 'limit'}) habis · lanjut otomatis ${when(j.resume_at)}`
+                  : j?.status === 'retrying'
+                    ? `respons terpotong · akan mencoba lagi (${j.retry_attempt ?? 0}/${j.retry_max ?? 0})${j.resume_at ? ` ${when(j.resume_at)}` : ''}`
                   : j?.status === 'done'
                     ? `selesai ${when(j.finished_at)}`
                     : j?.current ?? ''}

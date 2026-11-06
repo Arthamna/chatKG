@@ -67,6 +67,7 @@ export interface Health {
   llm_provider: string
   llm_model: string
   llm_models: string[]
+  default_tz: string
   neo4j: boolean
   neo4j_uri: string
   groq: boolean
@@ -95,7 +96,6 @@ export interface PreviewEpisode {
 }
 
 export interface SourcePreview {
-  schema_job: IngestJob | null
   source_id: string
   filename: string
   date_order: 'MDY' | 'DMY'
@@ -106,9 +106,17 @@ export interface SourcePreview {
   date_from: string | null
   date_to: string | null
   episodes: PreviewEpisode[]
+  duplicate_extractions: DuplicateExtraction[]
 }
 
-export type JobStatus = 'queued' | 'running' | 'waiting_quota' | 'done' | 'failed' | 'cancelled'
+export interface DuplicateExtraction {
+  kg_id: string
+  kg_name: string
+  version: string
+  episodes: number
+}
+
+export type JobStatus = 'queued' | 'running' | 'retrying' | 'waiting_quota' | 'done' | 'failed' | 'cancelled'
 
 export interface IngestJob {
   kind?: 'schema' | 'ingest'
@@ -125,6 +133,10 @@ export interface IngestJob {
   error: string | null
   resume_at: string | null
   waiting_reason?: string
+  retry_attempt?: number
+  retry_max?: number
+  retry_reason?: string
+  model?: string
   current?: string
   group_id?: string
   created_at: string
@@ -155,6 +167,8 @@ export interface SchemaProposal {
   ontology: Ontology
   baseline: Ontology
   sampled_episodes: number
+  model: string
+  extraction_instructions: string
 }
 
 export interface ReviewItem {
@@ -291,13 +305,15 @@ export const api = {
     return request<SourcePreview>(`/kgs/${enc(kg)}/sources`, { method: 'POST', body })
   },
 
-  startSchemaJob: (kg: string, source: string, force = false) =>
-    request<IngestJob>(`/kgs/${enc(kg)}/sources/${enc(source)}/schema-jobs`, { method: 'POST', json: { force } }),
+  startSchemaJob: (kg: string, source: string, model: string, force = false) =>
+    request<IngestJob>(`/kgs/${enc(kg)}/sources/${enc(source)}/schema-jobs`, {
+      method: 'POST', json: { force, model }
+    }),
   sourceSchema: (kg: string, source: string) =>
     request<SchemaProposal | null>(`/kgs/${enc(kg)}/sources/${enc(source)}/schema`),
-  saveSchema: (kg: string, source: string, revision: string, ontology: Ontology) =>
+  saveSchema: (kg: string, source: string, revision: string, ontology: Ontology, extractionInstructions: string) =>
     request<SchemaProposal>(`/kgs/${enc(kg)}/sources/${enc(source)}/schema`, {
-      method: 'PUT', json: { revision, ontology }
+      method: 'PUT', json: { revision, ontology, extraction_instructions: extractionInstructions }
     }),
   startJob: (kg: string, sourceId: string, revision: string) =>
     request<IngestJob>(`/kgs/${enc(kg)}/ingest-jobs`, {

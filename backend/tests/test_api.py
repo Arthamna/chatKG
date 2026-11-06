@@ -170,6 +170,7 @@ def test_full_flow(client, kg):
     assert preview['date_order'] == 'MDY' and len(preview['episodes']) == 4
     assert preview['participants'] == ['Pemilik', 'Leon']
     assert preview['counts'] == {'total': 17, 'text': 10, 'media': 6, 'system': 1}
+    assert 'schema_job' not in preview
 
     bad = client.post(
         f'/api/kgs/{kg}/sources', files={'file': ('x.txt', b'bukan chat', 'text/plain')}, data={'owner': 'P'}
@@ -177,7 +178,12 @@ def test_full_flow(client, kg):
     assert bad.status_code == 422
 
     # A4: inferred schema must be reviewed before extraction.
-    mapped = wait_job(client, preview['schema_job']['id'])
+    mapping = client.post(
+        f'/api/kgs/{kg}/sources/{preview["source_id"]}/schema-jobs',
+        json={'model': client.get('/api/health').json()['llm_model']},
+    )
+    assert mapping.status_code == 202, mapping.text
+    mapped = wait_job(client, mapping.json()['id'])
     assert mapped['status'] == 'done', mapped
     schema = client.get(f'/api/kgs/{kg}/sources/{preview["source_id"]}/schema').json()
 

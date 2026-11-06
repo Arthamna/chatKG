@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from app.ai.discovery import discover_schema, sample_episodes
 from app.kg.ingest import ingest_episodes
 from app.kg.schema import Ontology
-from app.kg.schema_store import proposal, source_key
+from app.kg.schema_store import merge_active_ontology, proposal, source_key
 
 
 def example_schema(domain='commerce'):
@@ -73,6 +73,36 @@ def test_extension_preserves_old_types_attributes_and_mappings():
         data['entity_types'][1]['attributes'] = []
         with pytest.raises(ValueError):
             Ontology.model_validate(data).extend(original)
+
+
+def test_excluded_baseline_type_stays_active_but_not_in_extraction_schema():
+    baseline = Ontology.model_validate(example_schema())
+    selected = Ontology(
+        entity_types=[baseline.entity_types[0]],
+        edge_types=[],
+        edge_type_map=[],
+        glossary={},
+    )
+
+    active = merge_active_ontology(selected, baseline)
+
+    assert {item.name for item in selected.entity_types} == {'Person'}
+    assert {item.name for item in active.entity_types} == {'Person', 'Product'}
+    assert {item.name for item in active.edge_types} == {'DISCUSSES'}
+
+
+def test_excluded_baseline_attribute_stays_active_but_not_in_extraction_schema():
+    baseline = Ontology.model_validate(example_schema())
+    selected_data = example_schema()
+    selected_data['entity_types'][1]['attributes'] = []
+    selected = Ontology.model_validate(selected_data)
+
+    active = merge_active_ontology(selected, baseline)
+
+    selected_product = next(item for item in selected.entity_types if item.name == 'Product')
+    active_product = next(item for item in active.entity_types if item.name == 'Product')
+    assert selected_product.attributes == []
+    assert [attribute.name for attribute in active_product.attributes] == ['scheduled_at']
 
 
 def test_sampling_is_bounded_and_covers_beginning_middle_end():
