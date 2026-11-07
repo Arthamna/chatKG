@@ -81,7 +81,7 @@ async def ask(
     group_id: str,
     top_k: int = 10,
     point_in_time: datetime | None = None,
-    include_invalid: bool = True,
+    include_invalid: bool = False,
     model: str | None = None,
     temperature: float = 0.2,
 ) -> Answer:

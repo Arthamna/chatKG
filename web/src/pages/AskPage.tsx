@@ -25,8 +25,7 @@ export default function AskPage() {
     version: params.get('version') ?? 'latest',
     topK: '10',
     pointInTime: '',
-    model: '',
-    includeInvalid: true
+    model: ''
   })
   const meta = useApi(() => api.versions(settings.kg), [settings.kg], !!settings.kg)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -61,7 +60,7 @@ export default function AskPage() {
             version: settings.version,
             top_k: Number(settings.topK),
             point_in_time: localInputToIso(settings.pointInTime),
-            include_invalid: settings.includeInvalid,
+            include_invalid: false,
             model: settings.model || null
           })
           setMessages((m) => [...m, { role: 'assistant', kg: settings.kg, kgLabel: kgName, result }])

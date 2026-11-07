@@ -57,9 +57,6 @@ export function AssistantMessage({ kg, kgLabel, result }: { kg: string; kgLabel:
                 <span className="text-muted-foreground">
                   {r.invalid_at ? `berlaku ${when(r.valid_at)} – ${when(r.invalid_at)}` : `berlaku sejak ${when(r.valid_at)}`}
                 </span>
-                <Badge variant={r.invalid_at ? 'warning' : 'success'} className="ml-auto">
-                  {r.invalid_at ? 'usang' : 'valid'}
-                </Badge>
               </li>
             ))}
           </ol>

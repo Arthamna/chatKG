@@ -59,6 +59,7 @@ async def test_without_point_in_time_keeps_node_summaries():
     llm = FakeLLM(['jawab [1]'])
     await ask_mod.ask(g, llm, 'q', group_id='kg_x__v1')
     assert 'Entitas' in llm.prompts[0]
+    assert g.filters[0].invalid_at
 
 
 async def test_empty_answer_is_retried_then_falls_back():

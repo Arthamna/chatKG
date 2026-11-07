@@ -138,7 +138,7 @@ class AskIn(BaseModel):
     version: str = 'latest'
     top_k: int = Field(10, ge=1, le=50)
     point_in_time: datetime | None = None
-    include_invalid: bool = True
+    include_invalid: bool = False
     model: str | None = None
 
 

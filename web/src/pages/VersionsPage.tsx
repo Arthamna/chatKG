@@ -200,11 +200,11 @@ export default function VersionsPage() {
             </Select>
             {sum && (
               <div className="flex flex-wrap gap-2 md:ml-auto">
-                <Badge variant="success">+{sum.nodes_added} entitas</Badge>
-                <Badge variant="destructive">−{sum.nodes_removed} entitas</Badge>
-                <Badge variant="warning">~{sum.nodes_changed + sum.edges_changed} diubah</Badge>
-                <Badge variant="success">+{sum.edges_added} fakta</Badge>
-                <Badge variant="info">{sum.edges_invalidated} invalidated</Badge>
+                {sum.nodes_added > 0 && <Badge variant="success">+{sum.nodes_added} entitas</Badge>}
+                {sum.nodes_removed > 0 && <Badge variant="destructive">−{sum.nodes_removed} entitas</Badge>}
+                {sum.nodes_changed + sum.edges_changed > 0 && <Badge variant="warning">~{sum.nodes_changed + sum.edges_changed} diubah</Badge>}
+                {sum.edges_added > 0 && <Badge variant="success">+{sum.edges_added} fakta</Badge>}
+                {sum.edges_invalidated > 0 && <Badge variant="info">{sum.edges_invalidated} invalidated</Badge>}
               </div>
             )}
           </div>

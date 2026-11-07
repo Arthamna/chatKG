@@ -1,7 +1,6 @@
 import { History } from 'lucide-react'
 
 import { Field, SelectField } from '@/components/common/Field'
-import Checkbox from '@/components/ui/Checkbox'
 import Input from '@/components/ui/Input'
 import { groupIdFor, type KnowledgeGraph, type Version } from '@/lib/api'
 
@@ -11,7 +10,6 @@ export interface AskSettings {
   topK: string
   pointInTime: string // datetime-local value
   model: string
-  includeInvalid: boolean
 }
 
 interface QuerySettingsProps {
@@ -40,8 +38,18 @@ export default function QuerySettings({ value, onChange, kgs, versions, hasDraft
       <SelectField label="Knowledge graph" value={value.kg} onChange={(v) => onChange({ ...value, kg: v, version: 'latest' })} options={kgs.map((k) => ({ value: k.id, label: k.name }))} />
       <SelectField label="Versi" value={value.version} onChange={(v) => set('version', v)} options={versionOptions} />
       <SelectField label="Top-K fakta" value={value.topK} onChange={(v) => set('topK', v)} options={['5', '10', '20', '50'].map((v) => ({ value: v, label: v }))} />
+      <SelectField label="Model jawaban" value={value.model} onChange={(v) => set('model', v)} options={models.map((m) => ({ value: m, label: m }))} />
       <Field label="Point-in-time (opsional)">
-        <Input type="datetime-local" value={value.pointInTime} onChange={(e) => set('pointInTime', e.target.value)} className="w-full" />
+        <Input
+          type="datetime-local"
+          value={value.pointInTime}
+          onChange={(e) => set('pointInTime', e.target.value)}
+          aria-describedby="point-in-time-help"
+          className="w-full"
+        />
+        <p id="point-in-time-help" className="text-muted-foreground text-xs leading-5">
+          Kosongkan untuk kondisi terkini, atau pilih waktu agar jawaban hanya memakai fakta yang berlaku saat itu.
+        </p>
       </Field>
       <SelectField label="Model jawaban" value={value.model} onChange={(v) => set('model', v)} options={models.map((m) => ({ value: m, label: m }))} />
       <label className="flex items-center gap-2 text-sm">
