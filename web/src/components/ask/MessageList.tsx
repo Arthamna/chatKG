@@ -99,11 +99,12 @@ export function AssistantMessage({ kg, kgLabel, result }: { kg: string; kgLabel:
 interface MessageListProps {
   messages: ChatMessage[]
   loading: boolean
+  loadingText?: string
   scope: string
   onSuggest: (q: string) => void
 }
 
-export default function MessageList({ messages, loading, scope, onSuggest }: MessageListProps) {
+export default function MessageList({ messages, loading, loadingText, scope, onSuggest }: MessageListProps) {
   if (!messages.length) {
     return (
       <div className="flex min-h-full flex-col items-center justify-center gap-3 p-4 text-center sm:p-6">
@@ -135,7 +136,7 @@ export default function MessageList({ messages, loading, scope, onSuggest }: Mes
       )}
       {loading && (
         <p className="text-muted-foreground flex items-center gap-2 text-sm">
-          <LoaderCircle className="size-4 animate-spin" /> Mencari fakta di {scope}…
+          <LoaderCircle className="size-4 animate-spin" /> {loadingText || `Mencari fakta di ${scope}…`}
         </p>
       )}
     </div>

@@ -11,6 +11,7 @@ import re
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -312,6 +313,27 @@ def _routes(app: FastAPI) -> None:
     async def get_kg(request: Request, kg_id: str):
         return _kg_json(await _kg(request, kg_id))
 
+    @app.delete('/api/kgs/{kg_id}')
+    async def delete_kg(request: Request, kg_id: str):
+        await _kg(request, kg_id)
+        runner = request.app.state.runner
+        jobs = await runner.list(kg_id)
+        if any(j['status'] in ('queued', 'running', 'retrying', 'waiting_quota') for j in jobs):
+            raise HTTPException(409, 'Batalkan atau tunggu semua proses AI sebelum menghapus knowledge graph')
+        source_rows = await V._q(_d(request), 'MATCH (s:Source {kg_id: $id}) RETURN DISTINCT s.path AS path', id=kg_id)
+        result = await V.delete_kg(_d(request), kg_id)
+        uploads = (request.app.state.settings.data_dir / 'uploads').resolve()
+        removed_files = 0
+        for row in source_rows:
+            if not row.get('path'):
+                continue
+            path = Path(row['path']).resolve()
+            remaining = await V._q(_d(request), 'MATCH (s:Source {path: $path}) RETURN count(s) AS n', path=str(path))
+            if path.parent == uploads and not remaining[0]['n'] and path.exists():
+                path.unlink()
+                removed_files += 1
+        return {**result, 'files': removed_files}
+
     # ---- sources (A3) ----
     @app.post('/api/kgs/{kg_id}/sources', status_code=201)
     async def upload_source(
@@ -544,6 +566,7 @@ def _routes(app: FastAPI) -> None:
     # ---- ask (D) ----
     @app.post('/api/kgs/{kg_id}/ask')
     async def ask(request: Request, kg_id: str, body: AskIn):
+        from app.kg.ask import AskRetryableError
         from app.kg.ask import ask as run_ask
 
         kg = await _kg(request, kg_id)
@@ -557,17 +580,24 @@ def _routes(app: FastAPI) -> None:
             version = f'v{kg.latest}' if kg.latest else 'draft'
         group_id = V.resolve_group(kg_id, version)
         s: Settings = request.app.state.settings
-        result = await run_ask(
-            _g(request),
-            groq,
-            body.question,
-            group_id=group_id,
-            top_k=body.top_k,
-            point_in_time=body.point_in_time,
-            include_invalid=body.include_invalid,
-            model=body.model,
-            temperature=s.groq_answer_temperature,
-        )
+        try:
+            result = await run_ask(
+                _g(request),
+                groq,
+                body.question,
+                group_id=group_id,
+                top_k=body.top_k,
+                point_in_time=body.point_in_time,
+                include_invalid=body.include_invalid,
+                model=body.model,
+                temperature=s.groq_answer_temperature,
+            )
+        except AskRetryableError as e:
+            raise HTTPException(
+                503,
+                detail={'code': e.code, 'message': str(e), 'retry_after': e.retry_after},
+                headers={'Retry-After': str(e.retry_after)},
+            ) from e
         refs = [asdict(r) for r in result.references]
         sub = await _subgraph(_d(request), [r['edge_uuid'] for r in refs])
         return {

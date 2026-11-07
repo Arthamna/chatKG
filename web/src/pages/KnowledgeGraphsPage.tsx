@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { GitCommitHorizontal, History, Network, Pencil, Plus, Search, Upload } from 'lucide-react'
+import { GitCommitHorizontal, History, Network, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import StatCard from '@/components/kg/StatCard'
 import KgTable from '@/components/kg/KgTable'
 import NewKgDialog from '@/components/kg/NewKgDialog'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 import WorkspaceMascot from '@/components/layout/WorkspaceMascot'
 import Button from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
 import { useApi } from '@/hooks/useApi'
 import { useCurrentKg } from '@/hooks/useCurrentKg'
-import { api, errorText } from '@/lib/api'
+import { api, errorText, type KnowledgeGraph } from '@/lib/api'
 import { fmt } from '@/lib/utils'
 
 type Filter = 'all' | 'draft' | 'empty'
@@ -25,12 +26,14 @@ const filters = [
 export default function KnowledgeGraphsPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const [, setCurrentKg] = useCurrentKg()
+  const [currentKg, setCurrentKg] = useCurrentKg()
   const kgs = useApi(() => api.listKgs(), [])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<KnowledgeGraph | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const all = kgs.data ?? []
   const drafts = all.filter((kg) => kg.has_draft)
@@ -140,7 +143,7 @@ export default function KnowledgeGraphsPage() {
         ) : kgs.loading && !kgs.data ? (
           <p role="status" className="text-muted-foreground py-8 text-center text-sm">Memuat knowledge graph…</p>
         ) : items.length ? (
-          <KgTable items={items} onOpen={setCurrentKg} />
+          <KgTable items={items} onOpen={setCurrentKg} onDelete={setDeleteTarget} />
         ) : (
           <div className="text-body-text px-4 py-10 text-center text-sm sm:px-6">
             <Network aria-hidden="true" className="bg-muted border-divider mx-auto mb-2 size-10 rounded-md border p-2.5" />
@@ -175,6 +178,32 @@ export default function KnowledgeGraphsPage() {
           }
         }}
       />
+      {deleteTarget && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setDeleteTarget(null)}
+          title={`Hapus knowledge graph “${deleteTarget.name}”?`}
+          description={`Seluruh draft, ${deleteTarget.latest} versi, ${deleteTarget.stats.nodes} entitas, fakta, episode, dan riwayat proses milik KG ini akan dihapus permanen.`}
+          confirmLabel={deleteBusy ? 'Menghapus…' : 'Hapus knowledge graph'}
+          confirmIcon={<Trash2 />}
+          confirmVariant="destructive"
+          confirmDisabled={deleteBusy}
+          onConfirm={async () => {
+            setDeleteBusy(true)
+            try {
+              await api.deleteKg(deleteTarget.id)
+              if (currentKg === deleteTarget.id) setCurrentKg(null)
+              toast.success(`KG "${deleteTarget.name}" dihapus`)
+              setDeleteTarget(null)
+              await kgs.reload()
+            } catch (e) {
+              toast.error('Gagal menghapus KG', { description: errorText(e) })
+            } finally {
+              setDeleteBusy(false)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

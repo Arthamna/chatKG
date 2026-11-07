@@ -3,7 +3,9 @@
 export class ApiError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    readonly code?: string,
+    readonly retryAfter?: number
   ) {
     super(message)
   }
@@ -20,13 +22,21 @@ async function request<T>(path: string, init?: RequestInit & { json?: unknown })
   })
   if (!res.ok) {
     let detail = res.statusText
+    let code: string | undefined
+    let retryAfter: number | undefined
     try {
       const body = await res.json()
-      detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail ?? body)
+      const raw = body.detail ?? body
+      if (typeof raw === 'string') detail = raw
+      else if (raw && typeof raw === 'object') {
+        detail = typeof raw.message === 'string' ? raw.message : JSON.stringify(raw)
+        code = typeof raw.code === 'string' ? raw.code : undefined
+        retryAfter = typeof raw.retry_after === 'number' ? raw.retry_after : undefined
+      }
     } catch {
       /* not JSON */
     }
-    throw new ApiError(detail || `HTTP ${res.status}`, res.status)
+    throw new ApiError(detail || `HTTP ${res.status}`, res.status, code, retryAfter)
   }
   return res.json() as Promise<T>
 }
@@ -294,6 +304,7 @@ export const api = {
   createKg: (name: string, description: string, id?: string) =>
     request<KnowledgeGraph>('/kgs', { method: 'POST', json: { name, description, id } }),
   getKg: (kg: string) => request<KnowledgeGraph>(`/kgs/${enc(kg)}`),
+  deleteKg: (kg: string) => request<{ graph_nodes: number; jobs: number; sources: number; versions: number; files: number }>(`/kgs/${enc(kg)}`, { method: 'DELETE' }),
 
   uploadSource: (kg: string, file: File, f: { owner: string; aliases: string; tz?: string; dateOrder?: string }) => {
     const body = new FormData()

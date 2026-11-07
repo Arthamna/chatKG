@@ -12,7 +12,7 @@ function read(): string | null {
 }
 
 /** The KG the header tabs (Upload / Graph Editor / Versions / Ask) point at. */
-export function useCurrentKg(): [string | null, (id: string) => void] {
+export function useCurrentKg(): [string | null, (id: string | null) => void] {
   const value = useSyncExternalStore(
     (cb) => {
       listeners.add(cb)
@@ -21,9 +21,10 @@ export function useCurrentKg(): [string | null, (id: string) => void] {
     read,
     () => null
   )
-  const set = useCallback((id: string) => {
+  const set = useCallback((id: string | null) => {
     try {
-      localStorage.setItem(KEY, id)
+      if (id) localStorage.setItem(KEY, id)
+      else localStorage.removeItem(KEY)
     } catch {
       /* storage unavailable: header falls back to the KG list */
     }

@@ -242,6 +242,29 @@ async def require_kg(driver: GraphDriver, kg_id: str) -> KnowledgeGraph:
     return kg
 
 
+async def delete_kg(driver: GraphDriver, kg_id: str) -> dict[str, int]:
+    """Delete one KG and every graph snapshot/metadata owned by it."""
+    kg = await require_kg(driver, kg_id)
+    versions = await list_versions(driver, kg_id)
+    deleted_graph_nodes = await delete_group(driver, draft_group(kg_id))
+    for version in versions:
+        deleted_graph_nodes += await delete_group(driver, version.group_id)
+    rows = await _q(
+        driver,
+        'CALL () { MATCH (j:IngestJob {kg_id: $id}) WITH collect(j) AS xs, count(j) AS n '
+        '  FOREACH (x IN xs | DETACH DELETE x) RETURN n AS jobs } '
+        'CALL () { MATCH (s:Source {kg_id: $id}) WITH collect(s) AS xs, count(s) AS n '
+        '  FOREACH (x IN xs | DETACH DELETE x) RETURN n AS sources } '
+        'CALL () { MATCH (v:Version {kg_id: $id}) WITH collect(v) AS xs, count(v) AS n '
+        '  FOREACH (x IN xs | DETACH DELETE x) RETURN n AS versions } '
+        'MATCH (k:KnowledgeGraph {id: $id}) DETACH DELETE k '
+        'RETURN jobs, sources, versions',
+        id=kg.id,
+    )
+    counts = rows[0] if rows else {'jobs': 0, 'sources': 0, 'versions': len(versions)}
+    return {'graph_nodes': deleted_graph_nodes, **counts}
+
+
 async def list_versions(driver: GraphDriver, kg_id: str) -> list[Version]:
     rows = await _q(driver, 'MATCH (v:Version {kg_id: $id}) RETURN v {.*} AS v ORDER BY v.n DESC', id=kg_id)
     return [_version(r['v']) for r in rows]

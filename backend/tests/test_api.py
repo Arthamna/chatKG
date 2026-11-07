@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from graphiti_core.edges import EntityEdge
 from graphiti_core.nodes import EntityNode, EpisodeType, EpisodicNode
 
+from app.ai.openrouter_llm import IncompleteCompletion
 from app.api import create_app
 from app.config import get_settings
 from app.kg import versions as V
@@ -41,6 +42,7 @@ class FakeGroq:
 
     def __init__(self):
         self.prompts: list[str] = []
+        self.error: Exception | None = None
 
     async def generate_response(self, messages, **kwargs):
         return {
@@ -52,6 +54,8 @@ class FakeGroq:
 
     async def complete(self, messages, **kw):
         self.prompts.append(messages[-1]['content'])
+        if self.error:
+            raise self.error
         return 'Leon mengingatkan Pemilik [1].', 10
 
 
@@ -277,7 +281,30 @@ def test_full_flow(client, kg):
     assert a['subgraph']['edges'][0]['label'].startswith('[1] REMINDS')
     assert 'Leon mengingatkan tugas ML pada 3 Nov' in client.fake_groq.prompts[-1]
 
+    # Retryable provider failures are returned as structured 503s, never raw 500s.
+    client.fake_groq.error = IncompleteCompletion('finish_reason=length')
+    retryable = client.post(f'/api/kgs/{kg}/ask', json={'question': 'Coba lagi', 'version': 'v2'})
+    client.fake_groq.error = None
+    assert retryable.status_code == 503, retryable.text
+    assert retryable.json()['detail'] == {
+        'code': 'response_truncated',
+        'message': 'Response Terpotong, mencoba ulang kembali',
+        'retry_after': 1,
+    }
+
     # discard draft
     client.post(f'/api/kgs/{kg}/draft')
     assert client.delete(f'/api/kgs/{kg}/draft').json()['deleted'] > 0
     assert client.get(f'/api/kgs/{kg}').json()['has_draft'] is False
+
+    # Delete the whole KG, including all versions, source metadata and upload.
+    source_path = Path(client.get(f'/api/sources/{preview["source_id"]}').json()['path'])
+    assert source_path.exists()
+    deleted = client.delete(f'/api/kgs/{kg}')
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()['versions'] == 3
+    assert deleted.json()['sources'] >= 1
+    assert deleted.json()['graph_nodes'] > 0
+    assert deleted.json()['files'] >= 1
+    assert not source_path.exists()
+    assert client.get(f'/api/kgs/{kg}').status_code == 404

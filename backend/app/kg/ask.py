@@ -12,7 +12,7 @@ from graphiti_core.search.search_config_recipes import COMBINED_HYBRID_SEARCH_CR
 from graphiti_core.search.search_filters import ComparisonOperator, DateFilter, SearchFilters
 
 from app.ai.groq_llm import BudgetedGroqClient
-from app.ai.openrouter_llm import OpenRouterClient
+from app.ai.openrouter_llm import IncompleteCompletion, OpenRouterClient
 
 SYSTEM_PROMPT = """\
 Kamu menjawab pertanyaan berdasarkan knowledge graph yang diekstrak dari chat.
@@ -25,6 +25,31 @@ Kamu menjawab pertanyaan berdasarkan knowledge graph yang diekstrak dari chat.
 NO_ANSWER = 'Tidak ada di KG versi ini.'
 # gpt-oss on Groq occasionally returns an empty `content` (output spent in reasoning).
 EMPTY_ANSWER_RETRIES = 2
+
+
+class AskRetryableError(RuntimeError):
+    def __init__(self, message: str, *, code: str, retry_after: int = 1) -> None:
+        super().__init__(message)
+        self.code = code
+        self.retry_after = retry_after
+
+
+def _retryable_error(error: Exception) -> AskRetryableError | None:
+    if isinstance(error, IncompleteCompletion):
+        return AskRetryableError('Response Terpotong, mencoba ulang kembali', code='response_truncated', retry_after=1)
+    status = getattr(error, 'status_code', None)
+    text = str(error).lower()
+    if status in (402, 429) or any(word in text for word in ('rate limit', 'quota', 'kuota', 'insufficient')):
+        return AskRetryableError(
+            'Kuota model gratis belum mencukupi, mencoba ulang kembali', code='free_model_quota', retry_after=2
+        )
+    if status in (408, 502, 503, 504) or any(word in text for word in ('connection', 'temporarily unavailable')):
+        return AskRetryableError(
+            'Model gratis sementara tidak tersedia, mencoba ulang kembali',
+            code='model_unavailable',
+            retry_after=2,
+        )
+    return None
 
 
 @dataclass
@@ -92,16 +117,21 @@ async def ask(
         context += '\n\nEntitas:\n' + '\n'.join(nodes)
     content = ''
     for _ in range(1 + EMPTY_ANSWER_RETRIES):
-        content, _ = await llm.complete(
-            [
-                {'role': 'system', 'content': SYSTEM_PROMPT},
-                {'role': 'user', 'content': f'{context}\n\nPertanyaan: {question}'},
-            ],
-            model=model or llm.model or '',
-            max_tokens=1024,
-            temperature=temperature,
-            json_mode=False,
-        )
+        try:
+            content, _ = await llm.complete(
+                [
+                    {'role': 'system', 'content': SYSTEM_PROMPT},
+                    {'role': 'user', 'content': f'{context}\n\nPertanyaan: {question}'},
+                ],
+                model=model or llm.model or '',
+                max_tokens=1024,
+                temperature=temperature,
+                json_mode=False,
+            )
+        except Exception as error:
+            if retryable := _retryable_error(error):
+                raise retryable from error
+            raise
         if content.strip():
             break
     return Answer(content.strip() or NO_ANSWER, refs, int((time.monotonic() - t0) * 1000), group_id)

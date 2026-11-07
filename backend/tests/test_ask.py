@@ -6,18 +6,24 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from types import SimpleNamespace
 
+import pytest
+
+from app.ai.openrouter_llm import IncompleteCompletion
 from app.kg import ask as ask_mod
 
 
 @dataclass
 class FakeLLM:
-    replies: list[str]
+    replies: list[str | Exception]
     model: str = 'openai/gpt-oss-120b'
     prompts: list[str] = field(default_factory=list)
 
     async def complete(self, messages, **kwargs):
         self.prompts.append(messages[-1]['content'])
-        return self.replies.pop(0), 10
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply, 10
 
 
 class FakeGraphiti:
@@ -66,3 +72,30 @@ async def test_empty_answer_is_retried_then_falls_back():
     res = await ask_mod.ask(g, llm, 'q', group_id='kg_x__v1')
     assert res.answer == ask_mod.NO_ANSWER
     assert len(llm.prompts) == 1 + ask_mod.EMPTY_ANSWER_RETRIES
+
+
+async def test_truncated_answer_becomes_retryable_error():
+    g = FakeGraphiti([_edge('fakta')], [])
+    llm = FakeLLM([IncompleteCompletion('finish_reason=length')])
+
+    with pytest.raises(ask_mod.AskRetryableError) as caught:
+        await ask_mod.ask(g, llm, 'q', group_id='kg_x__v1')
+
+    assert caught.value.code == 'response_truncated'
+    assert caught.value.retry_after == 1
+    assert str(caught.value) == 'Response Terpotong, mencoba ulang kembali'
+
+
+async def test_free_quota_error_becomes_retryable_error():
+    class QuotaError(RuntimeError):
+        status_code = 429
+
+    g = FakeGraphiti([_edge('fakta')], [])
+    llm = FakeLLM([QuotaError('rate limit exceeded')])
+
+    with pytest.raises(ask_mod.AskRetryableError) as caught:
+        await ask_mod.ask(g, llm, 'q', group_id='kg_x__v1')
+
+    assert caught.value.code == 'free_model_quota'
+    assert caught.value.retry_after == 2
+    assert str(caught.value) == 'Kuota model gratis belum mencukupi, mencoba ulang kembali'

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { MessageSquare, Network } from 'lucide-react'
+import { MessageSquare, Network, Trash2 } from 'lucide-react'
 
 import Button from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
@@ -22,13 +22,22 @@ function VersionBadges({ kg }: { kg: KnowledgeGraph }) {
   )
 }
 
-function Actions({ kg, onOpen }: { kg: KnowledgeGraph; onOpen: (id: string) => void }) {
+function Actions({ kg, onOpen, onDelete }: { kg: KnowledgeGraph; onOpen: (id: string) => void; onDelete: (kg: KnowledgeGraph) => void }) {
   return (
     <div className="flex justify-end gap-1">
       <Button variant="ghost" className="rounded-md px-3 font-bold" asChild>
         <Link to={`/kg/${kg.id}/graph`} onClick={() => onOpen(kg.id)}>
           <Network /> Editor
         </Link>
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-destructive rounded-md"
+        tooltip={`Hapus ${kg.name}`}
+        onClick={() => onDelete(kg)}
+      >
+        <Trash2 />
       </Button>
       <Button variant="ghost" className="rounded-md px-3 font-bold" asChild>
         <Link to={`/ask?kg=${kg.id}`} onClick={() => onOpen(kg.id)}>
@@ -39,7 +48,7 @@ function Actions({ kg, onOpen }: { kg: KnowledgeGraph; onOpen: (id: string) => v
   )
 }
 
-export default function KgTable({ items, onOpen }: { items: KnowledgeGraph[]; onOpen: (id: string) => void }) {
+export default function KgTable({ items, onOpen, onDelete }: { items: KnowledgeGraph[]; onOpen: (id: string) => void; onDelete: (kg: KnowledgeGraph) => void }) {
   return (
     <>
       <div className="hidden md:block">
@@ -70,7 +79,7 @@ export default function KgTable({ items, onOpen }: { items: KnowledgeGraph[]; on
                 <TableCell className="text-right tabular-nums">{fmt(kg.stats.episodes)}</TableCell>
                 <TableCell className="text-muted-foreground text-[13px] leading-[1.5] whitespace-nowrap">{since(kg.created_at)}</TableCell>
                 <TableCell className="pr-3">
-                  <Actions kg={kg} onOpen={onOpen} />
+                  <Actions kg={kg} onOpen={onOpen} onDelete={onDelete} />
                 </TableCell>
               </TableRow>
             ))}
@@ -91,7 +100,7 @@ export default function KgTable({ items, onOpen }: { items: KnowledgeGraph[]; on
             <p className="text-muted-foreground text-[13px] leading-[1.5] tabular-nums">
               {fmt(kg.stats.nodes)} entitas · {fmt(kg.stats.edges)} fakta · {fmt(kg.stats.episodes)} episode · dibuat {since(kg.created_at)}
             </p>
-            <Actions kg={kg} onOpen={onOpen} />
+            <Actions kg={kg} onOpen={onOpen} onDelete={onDelete} />
           </li>
         ))}
       </ul>

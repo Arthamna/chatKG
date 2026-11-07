@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/Card'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/Sheet'
 import { useApi } from '@/hooks/useApi'
 import { useCurrentKg } from '@/hooks/useCurrentKg'
-import { api, errorText } from '@/lib/api'
+import { ApiError, api, errorText } from '@/lib/api'
 import { localInputToIso } from '@/lib/time'
 
 /** D1 / D2 — Ask KG: Graphiti search on one version + Groq answer with citations. */
@@ -31,6 +31,7 @@ export default function AskPage() {
   const meta = useApi(() => api.versions(settings.kg), [settings.kg], !!settings.kg)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)
+  const [retryStatus, setRetryStatus] = useState('')
 
   useEffect(() => {
     if (!settings.kg && kgs.data?.length) setSettings((s) => ({ ...s, kg: kgs.data![0].id }))
@@ -50,20 +51,38 @@ export default function AskPage() {
     if (!settings.kg) return
     setMessages((m) => [...m, { role: 'user', text: q }])
     setLoading(true)
+    setRetryStatus('')
     try {
-      const result = await api.ask(settings.kg, {
-        question: q,
-        version: settings.version,
-        top_k: Number(settings.topK),
-        point_in_time: localInputToIso(settings.pointInTime),
-        include_invalid: settings.includeInvalid,
-        model: settings.model || null
-      })
-      setMessages((m) => [...m, { role: 'assistant', kg: settings.kg, kgLabel: kgName, result }])
+      const maxRetries = 3
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const result = await api.ask(settings.kg, {
+            question: q,
+            version: settings.version,
+            top_k: Number(settings.topK),
+            point_in_time: localInputToIso(settings.pointInTime),
+            include_invalid: settings.includeInvalid,
+            model: settings.model || null
+          })
+          setMessages((m) => [...m, { role: 'assistant', kg: settings.kg, kgLabel: kgName, result }])
+          break
+        } catch (e) {
+          if (e instanceof ApiError && e.code && attempt < maxRetries) {
+            setRetryStatus(`${e.message} (${attempt + 1}/${maxRetries})…`)
+            await new Promise((resolve) => setTimeout(resolve, (e.retryAfter ?? 2 ** attempt) * 1000))
+            continue
+          }
+          if (e instanceof ApiError && e.code) {
+            throw new Error(`Gagal setelah ${maxRetries} retry otomatis: ${e.message.replace(', mencoba ulang kembali', '')}`)
+          }
+          throw e
+        }
+      }
     } catch (e) {
       setMessages((m) => [...m, { role: 'error', text: `Gagal menjawab: ${errorText(e)}` }])
     } finally {
       setLoading(false)
+      setRetryStatus('')
     }
   }
 
@@ -110,7 +129,7 @@ export default function AskPage() {
             <p className="bg-warning-subtle text-warning m-3 rounded-md px-3 py-2 text-sm">API key LLM belum diisi di backend; periksa konfigurasi provider.</p>
           )}
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <MessageList messages={messages} loading={loading} scope={scope} onSuggest={ask} />
+            <MessageList messages={messages} loading={loading} loadingText={retryStatus} scope={scope} onSuggest={ask} />
           </div>
           <QueryComposer placeholder={messages.length ? 'Tanya lanjutan…' : `Tanyakan sesuatu tentang ${scope}…`} disabled={loading || !settings.kg} onSend={ask} />
         </Card>
