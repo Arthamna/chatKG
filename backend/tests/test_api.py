@@ -159,17 +159,18 @@ def test_full_flow(client, kg):
     assert client.post('/api/kgs', json={'name': 'x', 'id': kg}).status_code == 409
 
     # A3: upload + preview
-    with FIXTURE.open('rb') as f:
-        r = client.post(
-            f'/api/kgs/{kg}/sources',
-            files={'file': ('chat_wa.txt', f, 'text/plain')},
-            data={'owner': 'Pemilik', 'aliases': 'Leon TC 24=Leon'},
-        )
+    upload_text = FIXTURE.read_text(encoding='utf-8') + f'\n[11/4/26, 12:50:00 PM] Anda: marker {kg}\n'
+    r = client.post(
+        f'/api/kgs/{kg}/sources',
+        files={'file': ('chat_wa.txt', upload_text.encode(), 'text/plain')},
+        data={'owner': 'Pemilik', 'aliases': 'Leon TC 24=Leon'},
+    )
     assert r.status_code == 201, r.text
     preview = r.json()
     assert preview['date_order'] == 'MDY' and len(preview['episodes']) == 4
     assert preview['participants'] == ['Pemilik', 'Leon']
-    assert preview['counts'] == {'total': 17, 'text': 10, 'media': 6, 'system': 1}
+    assert preview['counts'] == {'total': 18, 'text': 11, 'media': 6, 'system': 1}
+    assert preview['duplicate_extractions'] == []
     assert 'schema_job' not in preview
 
     bad = client.post(
@@ -200,6 +201,15 @@ def test_full_flow(client, kg):
     assert (job['total'], job['done'], job['nodes'], job['edges']) == (4, 4, 2, 1)
     assert any('selesai' in line for line in job['log'])
 
+    duplicate = client.post(
+        f'/api/kgs/{kg}/sources',
+        files={'file': ('chat_wa.txt', upload_text.encode(), 'text/plain')},
+        data={'owner': 'Pemilik', 'aliases': 'Leon TC 24=Leon'},
+    )
+    assert duplicate.status_code == 201, duplicate.text
+    refs = duplicate.json()['duplicate_extractions']
+    assert any(ref['kg_id'] == kg and ref['version'] == 'draft' and ref['episodes'] > 0 for ref in refs)
+
     # A6: review the draft (all additions against an empty KG)
     changes = client.get(f'/api/kgs/{kg}/draft/changes').json()
     assert changes['summary']['add'] == 3  # 2 nodes + 1 fact
@@ -222,8 +232,28 @@ def test_full_flow(client, kg):
     client.post(f'/api/kgs/{kg}/draft')
     gd = client.get(f'/api/kgs/{kg}/graph', params={'version': 'draft'}).json()
     leon = next(n for n in gd['nodes'] if n['label'] == 'Leon')
+    pemilik = next(n for n in gd['nodes'] if n['label'] == 'Pemilik')
     r = client.patch(f'/api/kgs/{kg}/draft/entities/{leon["id"]}', json={'attributes': {'role': 'teman sekelas'}})
     assert r.status_code == 200, r.text
+    created_edge = client.post(
+        f'/api/kgs/{kg}/draft/edges',
+        json={
+            'source_uuid': leon['id'],
+            'target_uuid': pemilik['id'],
+            'name': 'knows about',
+            'fact': 'Leon mengenal Pemilik',
+        },
+    )
+    assert created_edge.status_code == 201, created_edge.text
+    manual_edge = created_edge.json()
+    assert manual_edge['name'] == 'KNOWS_ABOUT'
+    edited_edge = client.patch(
+        f'/api/kgs/{kg}/draft/edges/{manual_edge["uuid"]}',
+        json={'name': 'collaborates with', 'fact': 'Leon berkolaborasi dengan Pemilik'},
+    )
+    assert edited_edge.status_code == 200, edited_edge.text
+    assert edited_edge.json()['name'] == 'COLLABORATES_WITH'
+    assert client.delete(f'/api/kgs/{kg}/draft/edges/{manual_edge["uuid"]}').status_code == 200
     edge = gd['edges'][0]
     r = client.patch(f'/api/kgs/{kg}/draft/edges/{edge["id"]}', json={'fact': 'Leon mengingatkan tugas ML pada 3 Nov'})
     assert r.status_code == 200

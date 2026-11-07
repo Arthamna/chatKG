@@ -1,9 +1,9 @@
-import { GitMerge, Pencil, Trash2 } from 'lucide-react'
+import { GitMerge, Pencil, Plus, Trash2 } from 'lucide-react'
 
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import { isStale, type GraphData, type GraphNodeData } from '@/lib/graph'
+import { isStale, type GraphData, type GraphEdgeData, type GraphNodeData } from '@/lib/graph'
 
 interface PropertiesViewProps {
   node: GraphNodeData
@@ -13,6 +13,8 @@ interface PropertiesViewProps {
   onEditProperty?: (key: string) => void
   onMerge?: () => void
   onDelete?: () => void
+  onAddRelation?: () => void
+  onEditRelation?: (edge: GraphEdgeData) => void
   className?: string
 }
 
@@ -38,14 +40,8 @@ function Rows({ rows, onEdit }: { rows: Row[]; onEdit?: (k: string) => void }) {
 
 const show = (v: unknown) => (typeof v === 'string' ? v : v == null ? '—' : JSON.stringify(v))
 
-export default function PropertiesView({ node, graph, groupId, readOnly, onEditProperty, onMerge, onDelete, className }: PropertiesViewProps) {
+export default function PropertiesView({ node, graph, groupId, readOnly, onEditProperty, onMerge, onDelete, onAddRelation, onEditRelation, className }: PropertiesViewProps) {
   const edges = graph.edges.filter((e) => e.source === node.id || e.target === node.id)
-  const relations: Row[] = edges.map((e) => {
-    const otherId = e.source === node.id ? e.target : e.source
-    const other = graph.nodes.find((n) => n.id === otherId)
-    const dir = e.source === node.id ? '→' : '←'
-    return [e.label, `${dir} ${other?.label ?? otherId}${isStale(e) ? ' (usang)' : ''}`]
-  })
   const edit = readOnly ? undefined : onEditProperty
   const props: Row[] = [
     ['name', node.label, 'name'],
@@ -79,14 +75,42 @@ export default function PropertiesView({ node, graph, groupId, readOnly, onEditP
         rows={[
           ['id', node.id],
           ['labels', node.type],
-          ['degree', String(relations.length)],
+          ['degree', String(edges.length)],
           ['group_id', groupId]
         ]}
       />
       <h3 className="pl-1 text-sm font-bold">Properties</h3>
       <Rows rows={props} onEdit={edit} />
-      <h3 className="pl-1 text-sm font-bold">Relations</h3>
-      {relations.length ? <Rows rows={relations} /> : <p className="text-muted-foreground px-1">Tidak ada relasi.</p>}
+      <div className="flex items-center gap-2 pl-1">
+        <h3 className="text-sm font-bold">Relations</h3>
+        {!readOnly && (
+          <Button variant="outline" size="sm" className="ml-auto h-7" onClick={onAddRelation}>
+            <Plus /> Hubungkan
+          </Button>
+        )}
+      </div>
+      {edges.length ? (
+        <div className="bg-muted border-divider divide-divider divide-y rounded-md border">
+          {edges.map((edge) => {
+            const otherId = edge.source === node.id ? edge.target : edge.source
+            const other = graph.nodes.find((item) => item.id === otherId)
+            const direction = edge.source === node.id ? '→' : '←'
+            return (
+              <div key={edge.id} className="flex items-start gap-2 px-2 py-2 text-[13px]">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium break-words">{edge.label} {direction} {other?.label ?? otherId}{isStale(edge) ? ' (usang)' : ''}</p>
+                  <p className="text-body-text mt-0.5 break-words">{edge.fact || '—'}</p>
+                </div>
+                {!readOnly && (
+                  <Button variant="ghost" size="icon" className="-my-1 size-6" tooltip="Edit relasi" onClick={() => onEditRelation?.(edge)}>
+                    <Pencil className="!size-3" />
+                  </Button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : <p className="text-muted-foreground px-1">Tidak ada relasi.</p>}
       {edges.some((e) => e.source_quote) && (
         <>
           <h3 className="text-muted-foreground pl-1 text-sm font-bold tracking-wide">Sumber (episode)</h3>

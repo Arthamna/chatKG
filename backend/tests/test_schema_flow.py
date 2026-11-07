@@ -171,10 +171,11 @@ def new_kg(client):
 
 
 def upload(client, kg, extra=''):
+    unique = f'\n[11/4/26, 12:50:00 PM] Anda: marker {kg}\n'
     result = client.post(
         f'/api/kgs/{kg}/sources',
         data={'owner': 'Pemilik', 'aliases': 'Leon TC 24=Leon'},
-        files={'file': ('chat.txt', FIXTURE.read_text(encoding='utf-8') + extra, 'text/plain')},
+        files={'file': ('chat.txt', FIXTURE.read_text(encoding='utf-8') + unique + extra, 'text/plain')},
     )
     assert result.status_code == 201, result.text
     preview = result.json()

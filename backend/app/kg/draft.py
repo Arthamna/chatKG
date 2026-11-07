@@ -10,6 +10,8 @@ unknown properties in ``attributes``.
 
 from __future__ import annotations
 
+import re
+from datetime import UTC, datetime
 from typing import Any
 
 from graphiti_core import Graphiti
@@ -245,6 +247,54 @@ async def resolve_conflict(driver: GraphDriver, kg_id: str, keep_uuid: str) -> i
 # ---------------------------------------------------------------- edits (B2–B4)
 
 
+def _relation_name(value: str) -> str:
+    name = re.sub(r'[^A-Z0-9]+', '_', value.strip().upper()).strip('_')
+    if not name:
+        raise DraftError('nama relasi wajib diisi')
+    return name[:64]
+
+
+async def create_edge(
+    graphiti: Graphiti,
+    kg_id: str,
+    source_uuid: str,
+    target_uuid: str,
+    *,
+    name: str,
+    fact: str,
+) -> dict[str, Any]:
+    if source_uuid == target_uuid:
+        raise DraftError('node sumber dan target harus berbeda')
+    await _in_draft(graphiti.driver, kg_id, source_uuid, edge=False)
+    await _in_draft(graphiti.driver, kg_id, target_uuid, edge=False)
+    relation = _relation_name(name)
+    statement = fact.strip()
+    if not statement:
+        raise DraftError('fakta relasi wajib diisi')
+    rows = await _q(
+        graphiti.driver,
+        'MATCH (s:Entity {uuid: $s})-[r:RELATES_TO {name: $name}]->(t:Entity {uuid: $t}) '
+        'WHERE r.invalid_at IS NULL AND r.expired_at IS NULL RETURN r.uuid AS uuid',
+        s=source_uuid,
+        t=target_uuid,
+        name=relation,
+    )
+    if rows:
+        raise DraftError('relasi aktif dengan nama dan arah yang sama sudah ada; edit relasi tersebut')
+    edge = EntityEdge(
+        source_node_uuid=source_uuid,
+        target_node_uuid=target_uuid,
+        name=relation,
+        fact=statement,
+        group_id=draft_group(kg_id),
+        episodes=[],
+        created_at=datetime.now(UTC),
+    )
+    await edge.generate_embedding(graphiti.embedder)
+    await edge.save(graphiti.driver)
+    return {'uuid': edge.uuid, 'fact': edge.fact, 'name': edge.name}
+
+
 async def update_entity(
     graphiti: Graphiti,
     kg_id: str,
@@ -372,7 +422,7 @@ async def update_edge(
         edge.fact = fact.strip()  # type: ignore[union-attr]
         await edge.generate_embedding(graphiti.embedder)
     if name:
-        edge.name = name
+        edge.name = _relation_name(name)
     await edge.save(graphiti.driver)
     if invalidate:
         await _q(

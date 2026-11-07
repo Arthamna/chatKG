@@ -8,6 +8,8 @@ import DraftBar from '@/components/editor/DraftBar'
 import EditPropertyDialog from '@/components/editor/EditPropertyDialog'
 import MergeDialog from '@/components/editor/MergeDialog'
 import DeleteNodeDialog from '@/components/editor/DeleteNodeDialog'
+import CreateRelationDialog from '@/components/editor/CreateRelationDialog'
+import EditRelationDialog from '@/components/editor/EditRelationDialog'
 import CommitDialog from '@/components/review/CommitDialog'
 import GraphCanvas from '@/components/graph/GraphCanvas'
 import GraphControls from '@/components/graph/GraphControls'
@@ -25,7 +27,7 @@ import { useIsDark } from '@/hooks/useIsDark'
 import { api, errorText, groupIdFor } from '@/lib/api'
 import { viewToGraph, typesOf } from '@/lib/graphView'
 
-type DialogKind = null | 'edit' | 'merge' | 'delete' | 'commit' | 'discard'
+type DialogKind = null | 'edit' | 'merge' | 'delete' | 'add-relation' | 'edit-relation' | 'commit' | 'discard'
 const EMPTY = { nodes: [], edges: [] }
 
 /** B1 — Graph Editor (+ B2–B5). Committed versions are read-only; edits go to the draft. */
@@ -54,6 +56,7 @@ export default function GraphEditorPage() {
   const [edgeLabels, setEdgeLabels] = useState(true)
   const [dialog, setDialog] = useState<DialogKind>(null)
   const [propKey, setPropKey] = useState('name')
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -63,6 +66,7 @@ export default function GraphEditorPage() {
 
   const readOnly = !isMd || version !== 'draft'
   const selected = graph.nodes.find((n) => n.id === selectedId) ?? null
+  const selectedEdge = graph.edges.find((edge) => edge.id === selectedEdgeId) ?? null
   const changeCount = review.data?.items.length ?? 0
   const setVersion = (v: string) => setParams({ version: v }, { replace: true })
 
@@ -123,6 +127,11 @@ export default function GraphEditorPage() {
       }}
       onMerge={() => setDialog('merge')}
       onDelete={() => setDialog('delete')}
+      onAddRelation={() => setDialog('add-relation')}
+      onEditRelation={(edge) => {
+        setSelectedEdgeId(edge.id)
+        setDialog('edit-relation')
+      }}
     />
   )
 
@@ -271,6 +280,33 @@ export default function GraphEditorPage() {
               })
             }
           />
+          <CreateRelationDialog
+            open={dialog === 'add-relation'}
+            onOpenChange={(o) => !o && setDialog(null)}
+            node={selected}
+            graph={graph}
+            busy={busy}
+            onCreate={(direction, target, name, fact) =>
+              run('Relasi ditambahkan ke draft', () => api.createEdge(id, {
+                source_uuid: direction === 'out' ? selected.id : target,
+                target_uuid: direction === 'out' ? target : selected.id,
+                name,
+                fact
+              }))
+            }
+          />
+          {selectedEdge && (
+            <EditRelationDialog
+              open={dialog === 'edit-relation'}
+              onOpenChange={(o) => !o && setDialog(null)}
+              edge={selectedEdge}
+              graph={graph}
+              busy={busy}
+              onSave={(name, fact) =>
+                run('Relasi diperbarui', () => api.patchEdge(id, selectedEdge.id, { name, fact }))
+              }
+            />
+          )}
         </>
       )}
 

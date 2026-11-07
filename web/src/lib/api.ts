@@ -338,8 +338,10 @@ export const api = {
     request<{ edges_removed: number }>(`/kgs/${enc(kg)}/draft/entities/${enc(uuid)}`, { method: 'DELETE' }),
   mergeEntity: (kg: string, uuid: string, body: { target_uuid: string; name?: string; summary_mode?: string }) =>
     request<{ uuid: string; moved: number }>(`/kgs/${enc(kg)}/draft/entities/${enc(uuid)}/merge`, { method: 'POST', json: body }),
-  patchEdge: (kg: string, uuid: string, body: { fact?: string; invalidate?: boolean }) =>
+  patchEdge: (kg: string, uuid: string, body: { fact?: string; name?: string; invalidate?: boolean }) =>
     request<{ uuid: string }>(`/kgs/${enc(kg)}/draft/edges/${enc(uuid)}`, { method: 'PATCH', json: body }),
+  createEdge: (kg: string, body: { source_uuid: string; target_uuid: string; name: string; fact: string }) =>
+    request<{ uuid: string; name: string; fact: string }>(`/kgs/${enc(kg)}/draft/edges`, { method: 'POST', json: body }),
   deleteEdge: (kg: string, uuid: string) => request<{ deleted: string }>(`/kgs/${enc(kg)}/draft/edges/${enc(uuid)}`, { method: 'DELETE' }),
 
   graph: (kg: string, version = 'latest') => request<GraphView>(`/kgs/${enc(kg)}/graph?version=${enc(version)}`),

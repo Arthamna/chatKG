@@ -125,6 +125,13 @@ class EdgePatch(BaseModel):
     invalidate: bool = False
 
 
+class EdgeCreate(BaseModel):
+    source_uuid: str
+    target_uuid: str
+    name: str = Field(min_length=1, max_length=64)
+    fact: str = Field(min_length=1, max_length=2000)
+
+
 class AskIn(BaseModel):
     question: str = Field(min_length=1)
     version: str = 'latest'
@@ -226,8 +233,7 @@ def _routes(app: FastAPI) -> None:
         runner = request.app.state.runner
         jobs = await runner.list(kg_id)
         if any(
-            (j['status'] in ('queued', 'running', 'retrying', 'waiting_quota') or j['id'] == runner._current)
-            and j.get('kind', 'ingest') == 'ingest'
+            j['status'] in ('queued', 'running', 'retrying', 'waiting_quota') and j.get('kind', 'ingest') == 'ingest'
             for j in jobs
         ):
             raise HTTPException(409, 'Tunggu atau batalkan ekstraksi sebelum mengubah versi/draft')
@@ -481,6 +487,18 @@ def _routes(app: FastAPI) -> None:
     @app.patch('/api/kgs/{kg_id}/draft/edges/{uuid}')
     async def patch_edge(request: Request, kg_id: str, uuid: str, body: EdgePatch):
         return await D.update_edge(_g(request), kg_id, uuid, fact=body.fact, name=body.name, invalidate=body.invalidate)
+
+    @app.post('/api/kgs/{kg_id}/draft/edges', status_code=201)
+    async def create_edge(request: Request, kg_id: str, body: EdgeCreate):
+        await _kg(request, kg_id)
+        return await D.create_edge(
+            _g(request),
+            kg_id,
+            body.source_uuid,
+            body.target_uuid,
+            name=body.name,
+            fact=body.fact,
+        )
 
     @app.delete('/api/kgs/{kg_id}/draft/edges/{uuid}')
     async def delete_edge(request: Request, kg_id: str, uuid: str):
