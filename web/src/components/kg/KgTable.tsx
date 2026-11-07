@@ -30,6 +30,13 @@ function Actions({ kg, onOpen, onDelete }: { kg: KnowledgeGraph; onOpen: (id: st
           <Network /> Editor
         </Link>
       </Button>
+      
+      <Button variant="ghost" className="rounded-md px-3 font-bold" asChild>
+        <Link to={`/ask?kg=${kg.id}`} onClick={() => onOpen(kg.id)}>
+          <MessageSquare /> Ask
+        </Link>
+      </Button>
+
       <Button
         variant="ghost"
         size="icon"
@@ -38,11 +45,6 @@ function Actions({ kg, onOpen, onDelete }: { kg: KnowledgeGraph; onOpen: (id: st
         onClick={() => onDelete(kg)}
       >
         <Trash2 />
-      </Button>
-      <Button variant="ghost" className="rounded-md px-3 font-bold" asChild>
-        <Link to={`/ask?kg=${kg.id}`} onClick={() => onOpen(kg.id)}>
-          <MessageSquare /> Ask
-        </Link>
       </Button>
     </div>
   )
@@ -56,10 +58,10 @@ export default function KgTable({ items, onOpen, onDelete }: { items: KnowledgeG
           <TableHeader className="bg-muted [&_th]:text-body-text [&_th]:text-xs [&_th]:leading-4 [&_th]:font-bold [&_th]:uppercase">
             <TableRow className="border-divider hover:bg-transparent">
               <TableHead scope="col" className="w-[32%] pl-6">Nama</TableHead>
-              <TableHead scope="col">Versi</TableHead>
-              <TableHead scope="col" className="text-right">Entitas</TableHead>
-              <TableHead scope="col" className="text-right">Fakta</TableHead>
-              <TableHead scope="col" className="text-right">Episode</TableHead>
+              <TableHead scope="col" className='text-center'>Versi</TableHead>
+              <TableHead scope="col" className="text-center">Entitas</TableHead>
+              <TableHead scope="col" className="text-center">Fakta</TableHead>
+              <TableHead scope="col" className="text-center">Episode</TableHead>
               <TableHead scope="col">Dibuat</TableHead>
               <TableHead scope="col" className="pr-6 text-right">Aksi</TableHead>
             </TableRow>
@@ -72,11 +74,13 @@ export default function KgTable({ items, onOpen, onDelete }: { items: KnowledgeG
                   <p className="text-muted-foreground text-[13px] leading-[1.5] wrap-anywhere">{kg.description || kg.id}</p>
                 </TableCell>
                 <TableCell>
-                  <VersionBadges kg={kg} />
+                  <div className='flex justify-center'>
+                    <VersionBadges kg={kg} />
+                  </div>
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{fmt(kg.stats.nodes)}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmt(kg.stats.edges)}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmt(kg.stats.episodes)}</TableCell>
+                <TableCell className="text-center tabular-nums">{fmt(kg.stats.nodes)}</TableCell>
+                <TableCell className="text-center tabular-nums">{fmt(kg.stats.edges)}</TableCell>
+                <TableCell className="text-center tabular-nums">{fmt(kg.stats.episodes)}</TableCell>
                 <TableCell className="text-muted-foreground text-[13px] leading-[1.5] whitespace-nowrap">{since(kg.created_at)}</TableCell>
                 <TableCell className="pr-3">
                   <Actions kg={kg} onOpen={onOpen} onDelete={onDelete} />

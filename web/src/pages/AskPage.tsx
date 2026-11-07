@@ -100,7 +100,6 @@ export default function AskPage() {
   return (
     <div className="workspace-page flex h-full min-h-[42rem] flex-col gap-4 pb-6">
       <PageHeader
-        eyebrow="Tanya graph"
         title="Ask KG"
         description="Ajukan pertanyaan dan telusuri fakta sumber di knowledge graph."
       >

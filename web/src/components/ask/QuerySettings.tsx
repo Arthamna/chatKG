@@ -47,9 +47,6 @@ export default function QuerySettings({ value, onChange, kgs, versions, hasDraft
       <label className="flex items-center gap-2 text-sm">
         <Checkbox checked={value.includeInvalid} onCheckedChange={(v) => set('includeInvalid', v === true)} /> Sertakan fakta yang sudah invalid
       </label>
-      <p className="bg-muted text-body-text border-divider mt-auto flex gap-2 rounded-md border p-3 text-[13px] wrap-anywhere">
-        <History className="size-4 shrink-0" /> Ganti versi = jawaban dari snapshot itu ({value.kg ? groupIdFor(value.kg, resolved) : '—'}). Point-in-time memakai fakta yang berlaku pada saat itu saja.
-      </p>
     </div>
   )
 }

@@ -132,7 +132,7 @@ export default function VersionsPage() {
 
   return (
     <div className="workspace-page flex min-h-full flex-col gap-6">
-      <PageHeader eyebrow="Riwayat graph" title="Riwayat versi" description={`Setiap versi = salinan penuh graph (${groupIdFor(id, 'vN')}). Tidak ada versi yang ditimpa.`}>
+      <PageHeader title="Riwayat versi">
         <Select value={id} onValueChange={(v) => navigate(`/kg/${v}/versions`)}>
           <SelectTrigger className="w-56" aria-label="Knowledge graph">
             <SelectValue placeholder="Pilih KG" />
@@ -168,7 +168,6 @@ export default function VersionsPage() {
             {!rows.length && !meta.loading && <li className="text-muted-foreground text-sm">Belum ada versi. Upload chat lalu commit.</li>}
           </ul>
           <p className="text-muted-foreground mt-auto text-xs">
-            Penyimpanan: {versions.length} salinan · {fmt(versions.reduce((s, v) => s + v.nodes, 0))} entitas total (Neo4j self-hosted)
           </p>
         </Card>
 

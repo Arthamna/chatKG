@@ -14,7 +14,7 @@ function Navigation({ mobile = false }: { mobile?: boolean }) {
   const encodedKg = kg ? encodeURIComponent(kg) : ''
   const query = encodedKg ? `?kg=${encodedKg}` : ''
   const tabs = [
-    { label: 'Knowledge Graphs', to: '/kg', end: true },
+    { label: 'Dashboard', to: '/kg', end: true },
     { label: 'Upload', to: `/upload${query}` },
     { label: 'Graph Editor', to: encodedKg ? `/kg/${encodedKg}/graph` : '/kg?pick=graph', pick: !kg },
     { label: 'Versions', to: encodedKg ? `/kg/${encodedKg}/versions` : '/kg?pick=versions', pick: !kg },
@@ -57,7 +57,6 @@ interface AppHeaderProps {
 export default function AppHeader({ theme, onToggleTheme }: AppHeaderProps) {
   const health = useApi(() => api.health(), [])
   const db = health.data?.neo4j
-  const status = health.error ? 'API offline' : db === false ? 'Neo4j offline' : db ? 'Neo4j · self-hosted' : 'Memeriksa Neo4j…'
   const accountActions = (
     <>
       <Button variant="ghost" size="icon" tooltip="Pengaturan" side="bottom"><Settings /></Button>
@@ -76,7 +75,7 @@ export default function AppHeader({ theme, onToggleTheme }: AppHeaderProps) {
             <SheetContent side="left" className="bg-background gap-6 pt-6">
               <div className="flex items-center gap-2 pr-8">
                 <WorkspaceMark />
-                <SheetTitle className="font-bold">Chat → KG</SheetTitle>
+                <SheetTitle className="font-bold">Knowledge Chat</SheetTitle>
               </div>
               <SheetDescription className="sr-only">Halaman Knowledge Workspace</SheetDescription>
               <Navigation mobile />
@@ -90,16 +89,10 @@ export default function AppHeader({ theme, onToggleTheme }: AppHeaderProps) {
 
         <Link to="/kg" className="flex items-center gap-2 rounded-md font-bold whitespace-nowrap focus-visible:outline-2">
           <WorkspaceMark />
-          Chat → KG
-          <span className="text-muted-foreground hidden text-xs md:inline" aria-hidden="true">|</span>
-          <span className="text-body-text hidden text-sm font-medium md:inline">Knowledge Workspace</span>
+          Knowledge Chat
         </Link>
 
         <div className="flex items-center justify-end gap-1">
-          <span className="text-muted-foreground mr-1 hidden items-center gap-1.5 rounded-full border px-2 py-0.5 text-[13px] leading-[1.5] font-medium md:inline-flex">
-            <span className={cn('size-1.5 rounded-full', db ? 'bg-success' : db === false || health.error ? 'bg-destructive' : 'bg-muted-foreground')} />
-            {status}
-          </span>
           <Button variant="ghost" size="icon" tooltip={theme === 'dark' ? 'Mode terang' : 'Mode gelap'} side="bottom" onClick={onToggleTheme}>
             {theme === 'dark' ? <Moon /> : <Sun />}
           </Button>

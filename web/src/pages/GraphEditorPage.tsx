@@ -138,7 +138,6 @@ export default function GraphEditorPage() {
   return (
     <div className="workspace-page flex h-full min-h-[40rem] flex-col gap-4 pb-6">
       <PageHeader
-        eyebrow="Eksplorasi graph"
         title="Graph Editor"
         description={kg ? `Telusuri entitas dan relasi di ${kg.name}.` : 'Telusuri entitas dan relasi dalam knowledge graph.'}
       />

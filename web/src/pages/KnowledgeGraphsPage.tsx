@@ -46,25 +46,21 @@ export default function KnowledgeGraphsPage() {
     {
       label: 'Knowledge graphs',
       value: all.length,
-      sub: `${fmt(all.filter((kg) => kg.latest).length)} punya versi`,
       icon: Network
     },
     {
-      label: 'Versi tersimpan',
+      label: 'Total Versi KG',
       value: all.reduce((sum, kg) => sum + kg.latest, 0),
-      sub: 'Salinan penuh di Neo4j',
       icon: History
     },
     {
-      label: 'Entitas terkini',
+      label: 'Total Node',
       value: all.reduce((sum, kg) => sum + kg.stats.nodes, 0),
-      sub: `${fmt(all.reduce((sum, kg) => sum + kg.stats.edges, 0))} fakta`,
       icon: GitCommitHorizontal
     },
     {
-      label: 'Draft aktif',
+      label: 'Total Draft',
       value: drafts.length,
-      sub: drafts.map((kg) => kg.name).join(', ') || 'Tidak ada draft',
       icon: Pencil
     }
   ]
@@ -73,9 +69,8 @@ export default function KnowledgeGraphsPage() {
     <div className="workspace-page space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
         <div className="min-w-0 flex-1 basis-full lg:basis-0">
-          <p className="text-body-text text-xs leading-4 font-bold uppercase">Ringkasan ruang kerja</p>
-          <h1 className="mt-1 text-[28px] leading-[1.5] font-bold sm:text-4xl">Knowledge Graphs</h1>
-          <p className="text-body-text mt-1 leading-6">Pantau hasil ekstraksi chat, versi tersimpan, dan draft di ruang kerja ini.</p>
+          <h1 className="mt-1 text-[28px] leading-[1.5] font-bold sm:text-4xl">Dashboard</h1>
+          <p className="text-body-text mt-1 leading-6">Atur hasil ekstraksi chat dari knowledge graph di sistem ini.</p>
         </div>
         <WorkspaceMascot />
         <div className="flex flex-wrap items-center gap-2 lg:self-end">

@@ -107,7 +107,7 @@ export default function UploadPage() {
 
   return (
     <div className="workspace-page flex min-h-full flex-col gap-6">
-      <PageHeader eyebrow="Impor percakapan" title="Upload chat" description="Isi mapping peserta, lalu unggah chat. AI akan memetakan tipe entitas dan relasi secara otomatis.">
+      <PageHeader title="Upload chat" description="Isi mapping peserta, lalu unggah chat. AI akan memetakan tipe entitas dan relasi secara otomatis.">
         <Stepper active={0} />
       </PageHeader>
 
@@ -238,15 +238,6 @@ export default function UploadPage() {
               <RefreshCw /> Terapkan mapping
             </Button>
           )}
-          <div className="flex gap-3 rounded-md border p-4">
-            <CircleAlert className="mt-0.5 size-4 shrink-0" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Versi lama aman</p>
-              <p className="text-muted-foreground text-sm">
-                Ingest menulis ke draft ({groupIdFor(kg || 'kg', 'draft')}){kgInfo?.latest ? `, salinan penuh v${kgInfo.latest}` : ''}. Versi ber-nomor tidak berubah sampai kamu commit.
-              </p>
-            </div>
-          </div>
           <div className="bg-card mt-auto flex flex-wrap justify-end gap-2 max-lg:sticky max-lg:bottom-0 max-lg:py-3">
             <Button variant="outline" size="sm" onClick={() => navigate('/kg')}>
               Batal
