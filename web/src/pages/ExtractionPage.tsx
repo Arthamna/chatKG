@@ -97,7 +97,7 @@ export default function ExtractionPage() {
                 {j?.status === 'waiting_quota' && j.resume_at
                   ? `kuota LLM (${j.waiting_reason ?? 'limit'}) habis · lanjut otomatis ${when(j.resume_at)}`
                   : j?.status === 'retrying'
-                    ? `respons terpotong · akan mencoba lagi (${j.retry_attempt ?? 0}/${j.retry_max ?? 0})${j.resume_at ? ` ${when(j.resume_at)}` : ''}`
+                    ? `${j.retry_reason ?? 'respons terpotong'} · akan mencoba lagi (${j.retry_attempt ?? 0}/${j.retry_max ?? 0})${j.resume_at ? ` ${when(j.resume_at)}` : ''}`
                   : j?.status === 'done'
                     ? `selesai ${when(j.finished_at)}`
                     : j?.current ?? ''}

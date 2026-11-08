@@ -70,7 +70,14 @@ class Settings(BaseSettings):
     data_dir: Path = REPO_ROOT / 'data'
     default_tz: str = 'Asia/Jakarta'
     episode_gap_hours: float = 6
-    episode_max_messages: int = 50
+    # Keep each durable Graphiti checkpoint small. A single episode produces
+    # several structured LLM responses, so 50 messages can still overflow a
+    # free model's output budget even when the whole chat is not sent at once.
+    episode_max_messages: int = 20
+    # Number of whole-ingest retries after OpenRouter has exhausted its
+    # per-request retries. Completed episodes are read from Neo4j and skipped.
+    ingest_incomplete_retries: int = 5
+    ingest_retry_base_seconds: float = 2
     semaphore_limit: int = 2
 
     @property

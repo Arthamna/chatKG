@@ -16,6 +16,7 @@ from graphiti_core.embedder.client import EmbedderClient
 from graphiti_core.nodes import EntityNode, EpisodeType, EpisodicNode
 
 from app.ai.cpu_models import NoopReranker
+from app.ai.openrouter_llm import IncompleteCompletion
 from app.ai.quota import Limits, QuotaBudget
 from app.api import create_app
 from app.config import get_settings
@@ -52,6 +53,7 @@ class FakeGeneration:
         self.instructions = []
         self.discoveries = 0
         self.fail_after = None
+        self.incomplete_after = None
 
     async def generate_response(self, messages, **kwargs):
         self.discoveries += 1
@@ -134,6 +136,9 @@ def flow_client(tmp_path, monkeypatch):
             if fake.fail_after == i:
                 fake.fail_after = None
                 raise RuntimeError('Simulated interruption after a completed episode')
+            if fake.incomplete_after == i:
+                fake.incomplete_after = None
+                raise IncompleteCompletion('Simulated truncated structured response')
         return SimpleNamespace(skipped=[])
 
     app = create_app(build=build, settings=settings, ingest_fn=ingest)
@@ -338,6 +343,28 @@ def test_failed_job_resumes_original_schema_without_duplicate_episodes(flow_clie
     graph = c.get(f'/api/kgs/{kg}/graph').json()
     assert len(graph['nodes']) == 8 and len(graph['edges']) == 4
     assert c.fake_generation.ingested == [schema['ontology'], schema['ontology']]
+
+
+def test_incomplete_job_automatically_resumes_without_duplicate_episodes(flow_client):
+    c = flow_client
+    kg = new_kg(c)
+    preview, _, schema = upload(c, kg)
+    c.app.state.runner.settings = c.app.state.runner.settings.model_copy(
+        update={'ingest_retry_base_seconds': 0}
+    )
+    c.fake_generation.incomplete_after = 1
+
+    response = c.post(
+        f'/api/kgs/{kg}/ingest-jobs',
+        json={'source_id': preview['source_id'], 'schema_revision': schema['revision']},
+    )
+    finished = wait_job(c, response.json()['id'])
+
+    assert finished['status'] == 'done'
+    assert finished['done'] == finished['total'] == 4
+    assert any('melanjutkan dari checkpoint' in line for line in finished['log'])
+    graph = c.get(f'/api/kgs/{kg}/graph').json()
+    assert len(graph['nodes']) == 8 and len(graph['edges']) == 4
 
 
 def test_discarded_draft_does_not_reuse_completed_job(flow_client):

@@ -21,10 +21,11 @@ from typing import Any
 
 from graphiti_core import Graphiti
 
+from app.ai.openrouter_llm import IncompleteCompletion
 from app.config import Settings
 from app.ingest.prepare import prepare_source
 from app.kg import versions as V
-from app.kg.ingest import ingest_episodes
+from app.kg.ingest import existing_episodes, ingest_episodes
 from app.kg.ontology import build_instructions
 from app.kg.schema import Ontology, active_schema
 from app.kg.schema_store import SchemaConflict, proposal, save_proposal, source_key
@@ -62,6 +63,7 @@ class JobRunner:
         self._task: asyncio.Task | None = None
         self._current: str | None = None
         self._cancelled: set[str] = set()
+        self._retry_tasks: set[asyncio.Task] = set()
 
     @property
     def driver(self):
@@ -108,6 +110,10 @@ class JobRunner:
         self._task = asyncio.create_task(self._worker(), name='ingest-worker')
 
     async def stop(self) -> None:
+        for task in list(self._retry_tasks):
+            task.cancel()
+        if self._retry_tasks:
+            await asyncio.gather(*self._retry_tasks, return_exceptions=True)
         if self._task:
             self._task.cancel()
             try:
@@ -229,7 +235,9 @@ class JobRunner:
                 resume_at=None,
                 finished_at=None,
                 retry_attempt=None,
+                retry_max=None,
                 retry_reason=None,
+                batch_retry_attempt=0,
             )
             await self.queue.put(job_id)
             return await self.get(job_id)
@@ -250,12 +258,61 @@ class JobRunner:
                     raise
                 await self._update(job_id, status='cancelled', resume_at=None, finished_at=_now())
             except Exception as e:
-                logger.exception('ingest job %s failed', job_id)
-                await self._update(job_id, status='failed', error=str(e)[:1000], resume_at=None)
-                await self._log(job_id, f'gagal: {e}')
+                if await self._retry_incomplete_job(job_id, e):
+                    logger.warning('ingest job %s incomplete; scheduled from checkpoint', job_id)
+                else:
+                    logger.exception('ingest job %s failed', job_id)
+                    await self._update(job_id, status='failed', error=str(e)[:1000], resume_at=None)
+                    await self._log(job_id, f'gagal: {e}')
             finally:
                 self._current = None
                 self._run_task = None
+
+    async def _retry_incomplete_job(self, job_id: str, error: Exception) -> bool:
+        """Requeue an incomplete ingest without discarding durable episodes.
+
+        ``OPENROUTER_INCOMPLETE_RETRIES`` retries one structured LLM request.
+        This is the outer retry: Graphiti starts the current episode again while
+        episodes already committed to Neo4j are skipped by ``ingest_episodes``.
+        """
+        job = await self.get(job_id)
+        maximum = max(0, self.settings.ingest_incomplete_retries)
+        if (
+            not job
+            or job.get('kind', 'ingest') != 'ingest'
+            or not isinstance(error, IncompleteCompletion)
+            or maximum == 0
+        ):
+            return False
+        attempt = int(job.get('batch_retry_attempt') or 0) + 1
+        if attempt > maximum:
+            return False
+        delay = min(60.0, max(0.0, self.settings.ingest_retry_base_seconds) * (2 ** (attempt - 1)))
+        resume = (datetime.now(UTC) + timedelta(seconds=delay)).isoformat()
+        await self._update(
+            job_id,
+            status='retrying',
+            error=None,
+            resume_at=resume,
+            retry_attempt=attempt,
+            retry_max=maximum,
+            retry_reason='melanjutkan batch dari episode yang sudah tersimpan',
+            batch_retry_attempt=attempt,
+        )
+        await self._log(
+            job_id,
+            f'batch belum selesai; melanjutkan dari checkpoint ({attempt}/{maximum}) dalam {delay:g}s',
+        )
+        task = asyncio.create_task(self._requeue_after(job_id, delay), name=f'ingest-retry-{job_id}')
+        self._retry_tasks.add(task)
+        task.add_done_callback(self._retry_tasks.discard)
+        return True
+
+    async def _requeue_after(self, job_id: str, delay: float) -> None:
+        await asyncio.sleep(delay)
+        job = await self.get(job_id)
+        if job and job['status'] == 'retrying' and job_id not in self._cancelled:
+            await self.queue.put(job_id)
 
     async def _run(self, job_id: str) -> None:
         job = await self.get(job_id)
@@ -303,8 +360,21 @@ class JobRunner:
                 schema=active_ontology.model_dump_json(),
             )
         episodes = prepared.episodes
-        await self._update(job_id, status='running', total=len(episodes), started_at=_now(), group_id=group_id)
+        known = await existing_episodes(self.graphiti, group_id)
+        saved = sum(ep.name in known for ep in episodes)
+        await self._update(
+            job_id,
+            status='running',
+            total=len(episodes),
+            done=saved,
+            started_at=job.get('started_at') or _now(),
+            group_id=group_id,
+            resume_at=None,
+            retry_reason=None,
+        )
         await self._log(job_id, f'{len(episodes)} episode dari {src["filename"]} → {group_id}')
+        if saved:
+            await self._log(job_id, f'melanjutkan dari checkpoint; {saved}/{len(episodes)} episode sudah tersimpan')
 
         # Callbacks are synchronous; their writes go through one queue so they land in
         # order (a late "running" must never overwrite the final "done").
@@ -423,6 +493,9 @@ class JobRunner:
             finished_at=_now(),
             resume_at=None,
             skipped=len(getattr(report, 'skipped', [])),
+            retry_attempt=None,
+            retry_max=None,
+            retry_reason=None,
         )
         await self._log(job_id, f'selesai · draft berisi {stats["nodes"]} entitas, {stats["edges"]} fakta')
 

@@ -25,6 +25,11 @@ cd web && npm ci && npm run dev
 
 The default provider is `openrouter` and the default model is `openrouter/free`; only that router or model IDs ending in `:free` are accepted. No paid fallback is used. Restart the backend after changing configuration. To retain Groq, set `LLM_PROVIDER=groq` and `GROQ_API_KEY`.
 
+Extraction is checkpointed per episode in Neo4j. `OPENROUTER_INCOMPLETE_RETRIES`
+retries one truncated model response, while `INGEST_INCOMPLETE_RETRIES` retries the
+outer extraction job and skips episodes that are already stored. Use
+`EPISODE_MAX_MESSAGES` to keep each durable batch small (default: 20).
+
 Neo4j Browser is available at <http://localhost:7474>. 
 Local application data is written to `data/`.
 Neo4j data is kept in its Docker volume.
