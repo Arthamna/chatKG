@@ -107,7 +107,7 @@ export default function UploadPage() {
 
   return (
     <div className="workspace-page flex min-h-full flex-col gap-6">
-      <PageHeader title="Upload chat" description="Isi mapping peserta, lalu unggah chat. AI akan memetakan tipe entitas dan relasi secara otomatis.">
+      <PageHeader title="Upload chat" description="Isi mapping dan unggah chat. AI akan memetakan tipe entitas dan relasi secara otomatis.">
         <Stepper active={0} />
       </PageHeader>
 
@@ -115,8 +115,8 @@ export default function UploadPage() {
         <div className="flex min-w-0 flex-1 flex-col gap-5">
           <Card className="space-y-4 p-6">
             <div className="space-y-1.5">
-              <CardTitle>Unggah export chat</CardTitle>
-              <CardDescription>WhatsApp (iOS) “Ekspor chat” tanpa media · file .txt</CardDescription>
+              <CardTitle>Unggah chat</CardTitle>
+              <CardDescription>File .txt dari chat Whatsapp</CardDescription>
             </div>
             <FileDropzone
               onFiles={(files) => {

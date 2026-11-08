@@ -51,10 +51,6 @@ export default function QuerySettings({ value, onChange, kgs, versions, hasDraft
           Kosongkan untuk kondisi terkini, atau pilih waktu agar jawaban hanya memakai fakta yang berlaku saat itu.
         </p>
       </Field>
-      <SelectField label="Model jawaban" value={value.model} onChange={(v) => set('model', v)} options={models.map((m) => ({ value: m, label: m }))} />
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox checked={value.includeInvalid} onCheckedChange={(v) => set('includeInvalid', v === true)} /> Sertakan fakta yang sudah invalid
-      </label>
     </div>
   )
 }

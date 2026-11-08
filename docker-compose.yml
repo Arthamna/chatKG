@@ -1,4 +1,4 @@
-# Self-hosted graph database for the Chat → KG platform.
+# Self-hosted graph database 
 #
 # Graphiti (core engine) requires Neo4j >= 5.26. Community edition is enough:
 # every KG version is stored as a full copy under its own Graphiti group_id
