@@ -59,7 +59,7 @@ export default function ExtractionPage() {
 
   return (
     <div className="workspace-page flex min-h-full flex-col gap-6">
-      <PageHeader eyebrow="Impor percakapan" title="Ekstraksi" description={`Graphiti menulis ke draft ${groupIdFor(kg || 'kg', 'draft')}; kuota LLM diatur otomatis.`}>
+      <PageHeader eyebrow="Impor percakapan" title="Ekstraksi">
         <Stepper active={2} />
       </PageHeader>
 
@@ -152,17 +152,6 @@ export default function ExtractionPage() {
               }}
             >
               Batalkan
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!active}
-              onClick={() => {
-                toast.info('Ekstraksi lanjut di background', { description: 'Buka lagi dari Upload atau cek di Graph Editor.' })
-                navigate('/kg')
-              }}
-            >
-              Jalankan di background
             </Button>
             <Button size="sm" disabled={j?.status !== 'done'} onClick={() => navigate(`/upload/review?kg=${kg}`)}>
               Lihat hasil <ArrowRight />

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { GitCommitHorizontal, History, Network, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react'
+import { GitCommitHorizontal, History, Network, Pencil, Plus, Search, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import StatCard from '@/components/kg/StatCard'
 import KgTable from '@/components/kg/KgTable'
 import NewKgDialog from '@/components/kg/NewKgDialog'
-import ConfirmDialog from '@/components/common/ConfirmDialog'
+import DeleteKgDialog from '@/components/kg/DeleteKgDialog'
 import WorkspaceMascot from '@/components/layout/WorkspaceMascot'
 import Button from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -133,7 +133,6 @@ export default function KnowledgeGraphsPage() {
           <div role="alert" className="px-4 py-8 text-center text-sm sm:px-6">
             <p className="text-destructive font-semibold">Tidak bisa menghubungi backend</p>
             <p className="text-body-text mt-1 break-words">{kgs.error}</p>
-            <p className="text-muted-foreground mt-1">Jalankan <code className="bg-secondary rounded-xs px-1.5 py-0.5">uv run uvicorn app.api:app --port 8000</code> di folder backend.</p>
           </div>
         ) : kgs.loading && !kgs.data ? (
           <p role="status" className="text-muted-foreground py-8 text-center text-sm">Memuat knowledge graph…</p>
@@ -174,15 +173,11 @@ export default function KnowledgeGraphsPage() {
         }}
       />
       {deleteTarget && (
-        <ConfirmDialog
-          open
+        <DeleteKgDialog
+          key={deleteTarget.id}
+          kg={deleteTarget}
+          busy={deleteBusy}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
-          title={`Hapus knowledge graph “${deleteTarget.name}”?`}
-          description={`Seluruh draft, ${deleteTarget.latest} versi, ${deleteTarget.stats.nodes} entitas, fakta, episode, dan riwayat proses milik KG ini akan dihapus permanen.`}
-          confirmLabel={deleteBusy ? 'Menghapus…' : 'Hapus knowledge graph'}
-          confirmIcon={<Trash2 />}
-          confirmVariant="destructive"
-          confirmDisabled={deleteBusy}
           onConfirm={async () => {
             setDeleteBusy(true)
             try {

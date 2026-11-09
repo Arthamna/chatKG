@@ -29,7 +29,7 @@ export default function NewKgDialog({ open, onOpenChange, busy, onCreate }: NewK
       open={open}
       onOpenChange={onOpenChange}
       title="Buat knowledge graph"
-      description="KG baru dimulai kosong. Data pertama masuk lewat Upload chat ke draft, lalu di-commit sebagai v1."
+      description="Knowledge Graph yang menyimpan chat."
       confirmLabel={busy ? 'Membuat…' : 'Buat & upload chat'}
       confirmIcon={<ArrowRight />}
       confirmDisabled={busy || !name.trim()}

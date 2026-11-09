@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LoaderCircle, RefreshCw, Sparkles } from 'lucide-react'
 
@@ -25,6 +25,7 @@ export default function ModelingPage() {
   const [busy, setBusy] = useState(false)
   const [starting, setStarting] = useState(false)
   const [instructions, setInstructions] = useState('')
+  const schemaForm = useRef<HTMLFormElement>(null)
   const health = useApi(() => api.health(), [])
   const job = useApi(() => api.getJob(jobId), [jobId], !!jobId)
   const active = starting || (!!jobId && job.data?.id !== jobId) ||
@@ -89,6 +90,7 @@ export default function ModelingPage() {
 
   const extract = async () => {
     if (!proposal || !ontology) return
+    if (!schemaForm.current?.reportValidity()) return
     setBusy(true)
     setError('')
     try {
@@ -115,17 +117,17 @@ export default function ModelingPage() {
           <LoaderCircle className="size-5 animate-spin" />
           <div><p className="font-medium">{job.data?.status === 'waiting_quota' ? 'Menunggu kuota model gratis' : job.data?.status === 'retrying' ? `Respons terpotong, akan mencoba lagi (${job.data.retry_attempt}/${job.data.retry_max})` : 'AI sedang memetakan tipe entitas dan relasi…'}</p>
             <p className="text-muted-foreground text-sm">{job.data?.resume_at ? `Dilanjutkan otomatis ${when(job.data.resume_at)}. ` : ''}Proses tetap berjalan saat halaman ditutup.</p></div>
-        </Card> : ontology && proposal ? <SchemaEditor value={ontology} baseline={proposal.baseline} onChange={setOntology} /> :
+        </Card> : ontology && proposal ? <SchemaEditor value={ontology} baseline={proposal.baseline} onChange={setOntology} formRef={schemaForm} /> :
           <Card className="p-6 text-sm text-muted-foreground">Hasil pemetaan akan muncul di sini. Jika proses gagal, periksa konfigurasi lalu petakan ulang.</Card>}
       </div>
       <Card className="h-fit space-y-4 p-6 lg:w-80 lg:shrink-0">
         <CardTitle>Ekstraksi dengan LLM</CardTitle>
         <p className="text-sm">{health.data?.llm_provider ?? '…'} · {proposal?.model ?? job.data?.model ?? health.data?.llm_model ?? '…'}</p>
-        <CardDescription>{proposal ? `${proposal.sampled_episodes} episode disampel untuk pemetaan. ` : ''}Tipe yang tidak muncul di sampel bisa ditambahkan di sini. Ekstraksi membaca seluruh episode.</CardDescription>
-        <p className="text-muted-foreground text-sm">Hasil masuk ke draft. Tinjau graph sebelum commit menjadi versi baru.</p>
-        <p className="text-muted-foreground text-xs">Model gratis mempunyai batas kuota. Aplikasi menunggu dan melanjutkan proses; model berbayar tidak dipilih otomatis.</p>
+        <CardDescription>{proposal ? `${proposal.sampled_episodes} episode disampel untuk pemetaan. ` : ''}
+          Ekstraksi Knowledge Base dengan bantuan LLM Tipe yang tidak muncul di sampel bisa ditambahkan di sini.</CardDescription>
+        <p className="text-muted-foreground text-sm">Tinjau dan edit hasil graph sebelum membuat Knowledge Graph akhir</p>
         <div className="space-y-1.5">
-          <label htmlFor="extraction-instructions" className="text-sm font-medium">Instruksi tambahan ekstraksi</label>
+          <label htmlFor="extraction-instructions" className="text-sm font-medium">Instruksi tambahan ekstraksi (opsional)</label>
           <Textarea
             id="extraction-instructions"
             value={instructions}

@@ -61,7 +61,7 @@ export default function ReviewPage() {
       <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-4">
         <Check className="text-success size-4" />
         <span className="text-sm font-medium">
-          Draft {groupIdFor(kg || 'kg', 'draft')} vs {review.data?.base ? `v${review.data.base}` : 'kosong'}
+          Draft {next}
         </span>
         <div className="flex flex-wrap gap-2 md:ml-auto">
           <Badge variant="success">{s.add ?? 0} baru</Badge>
@@ -101,7 +101,9 @@ export default function ReviewPage() {
           <Card className="flex h-[360px] flex-col gap-3 p-6 lg:h-auto lg:flex-1">
             <div className="space-y-1.5">
               <CardTitle>Preview draft</CardTitle>
-              <CardDescription>Cincin hijau = baru · oranye = diubah · garis abu = fakta usang</CardDescription>
+              <CardDescription>Cincin hijau = baru</CardDescription>
+              <CardDescription>Cincin oranye = diubah</CardDescription>
+              <CardDescription>Garis abu = fakta usang</CardDescription>
             </div>
             <div className="min-h-0 flex-1 overflow-hidden rounded-md border">
               {graph.nodes.length ? (
