@@ -1,4 +1,4 @@
-# Chat → KG — Web UI
+# chatKG — Web UI
 
 The React workspace uses the backend API and shares one design system across all routes. [Design specification](../DESIGN.md)
 

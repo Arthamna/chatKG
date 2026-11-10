@@ -28,7 +28,6 @@ const STATUS: Record<JobStatus, { label: string; variant: 'info' | 'warning' | '
   cancelled: { label: 'dibatalkan', variant: 'secondary' }
 }
 
-/** A5 — extraction job progress (Graphiti → draft), polled every 2 s. */
 export default function ExtractionPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()

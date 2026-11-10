@@ -1,12 +1,3 @@
-"""Command line entry point for trying the pipeline before the API/worker exist.
-
-uv run chatkg parse  tests/fixtures/wa_ios_sample.txt --owner Pemilik --alias "Leon TC 24=Leon"
-uv run chatkg check
-uv run chatkg ingest tests/fixtures/wa_ios_sample.txt --owner Pemilik --alias "Leon TC 24=Leon" --kg demo
-uv run chatkg ask "Tugas apa yang harus diingatkan?" --kg demo
-uv run chatkg quota
-"""
-
 from __future__ import annotations
 
 import argparse

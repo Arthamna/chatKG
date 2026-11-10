@@ -3,7 +3,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { typeColor } from '@/lib/graph'
 import type { Schema } from '@/lib/api'
 
-/** Entity types of the ontology (Graphiti entity_types), read-only. */
 export default function EntityTypeTable({ items }: { items: Schema['entity_types'] }) {
   return (
     <Table>

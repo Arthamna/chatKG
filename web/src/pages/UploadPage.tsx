@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { CircleAlert, FileText, LoaderCircle, Network, RefreshCw, Sparkles } from 'lucide-react'
+import { FileText, LoaderCircle, Network, Plus, RefreshCw, Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
 
 import ConfirmDialog from '@/components/common/ConfirmDialog'
+import NewKgDialog from '@/components/kg/NewKgDialog'
 import PageHeader from '@/components/layout/PageHeader'
 import Stepper from '@/components/layout/Stepper'
 import FileDropzone from '@/components/upload/FileDropzone'
@@ -14,7 +16,7 @@ import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import { useApi } from '@/hooks/useApi'
 import { useCurrentKg } from '@/hooks/useCurrentKg'
-import { api, errorText, groupIdFor, type SourcePreview } from '@/lib/api'
+import { api, errorText, type SourcePreview } from '@/lib/api'
 import { when } from '@/lib/time'
 
 const OWNER_KEY = 'chat-kg-owner'
@@ -30,10 +32,15 @@ const readOwner = () => {
 export default function UploadPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const [currentKg, setCurrentKg] = useCurrentKg()
+  const [, setCurrentKg] = useCurrentKg()
   const kgs = useApi(() => api.listKgs(), [])
   const health = useApi(() => api.health(), [])
-  const kg = params.get('kg') ?? currentKg ?? ''
+  const kg = params.get('kg') ?? ''
+  const [targetMode, setTargetMode] = useState(kg ? 'existing' : '')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const requestId = useRef(0)
 
   const [file, setFile] = useState<File | null>(null)
   const [owner, setOwner] = useState(readOwner)
@@ -41,15 +48,25 @@ export default function UploadPage() {
   const [tz, setTz] = useState('')
   const [dateOrder, setDateOrder] = useState('auto')
   const [model, setModel] = useState('')
-  const [preview, setPreview] = useState<SourcePreview | null>(null)
+  const [uploaded, setUploaded] = useState<{ kg: string; preview: SourcePreview } | null>(null)
+  const preview = uploaded?.kg === kg ? uploaded.preview : null
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [duplicateTarget, setDuplicateTarget] = useState('')
 
   useEffect(() => {
-    if (!kg && kgs.data?.length) setParams({ kg: kgs.data[0].id }, { replace: true })
-  }, [kg, kgs.data, setParams])
+    requestId.current += 1
+    setUploaded(null)
+    setDuplicateOpen(false)
+    setDuplicateTarget('')
+    setError(null)
+    setBusy(false)
+    if (kg) setTargetMode('existing')
+    return () => {
+      requestId.current += 1
+    }
+  }, [kg])
 
   useEffect(() => {
     if (!model && health.data?.llm_model) setModel(health.data.llm_model)
@@ -58,12 +75,18 @@ export default function UploadPage() {
   const kgInfo = kgs.data?.find((k) => k.id === kg)
 
   const send = async (f: File | null = file) => {
-    if (!f || !kg) return
+    if (!f || busy || creating) return
+    setUploaded(null)
+    if (!kgInfo) {
+      setError('Pilih knowledge graph tujuan atau buat KG baru sebelum mengunggah.')
+      return
+    }
     if (!owner.trim()) {
       setError('Isi dulu nama pemilik akun (pengganti "Anda").')
       return
     }
     setBusy(true)
+    const id = ++requestId.current
     setError(null)
     setDuplicateOpen(false)
     try {
@@ -73,7 +96,8 @@ export default function UploadPage() {
     }
     try {
       const p = await api.uploadSource(kg, f, { owner: owner.trim(), aliases, tz, dateOrder: dateOrder === 'auto' ? '' : dateOrder })
-      setPreview(p)
+      if (id !== requestId.current) return
+      setUploaded({ kg, preview: p })
       if (p.duplicate_extractions.length) {
         setDuplicateTarget(p.duplicate_extractions[0].kg_id)
         setDuplicateOpen(true)
@@ -82,26 +106,27 @@ export default function UploadPage() {
         setCurrentKg(kg)
       }
     } catch (e) {
-      setPreview(null)
-      setError(errorText(e))
+      if (id === requestId.current) setError(errorText(e))
     } finally {
-      setBusy(false)
+      if (id === requestId.current) setBusy(false)
     }
   }
 
   const others = preview?.participants.filter((p) => p !== owner.trim()) ?? []
 
   const mapWithAi = async () => {
-    if (!preview || !model || preview.duplicate_extractions.length) return
+    if (!preview || !kgInfo || !model || busy || creating || preview.duplicate_extractions.length) return
+    const id = ++requestId.current
     setBusy(true)
     setError(null)
     try {
       const job = await api.startSchemaJob(kg, preview.source_id, model)
+      if (id !== requestId.current) return
       navigate(`/upload/model?kg=${encodeURIComponent(kg)}&source=${encodeURIComponent(preview.source_id)}&job=${job.id}`)
     } catch (e) {
-      setError(errorText(e))
+      if (id === requestId.current) setError(errorText(e))
     } finally {
-      setBusy(false)
+      if (id === requestId.current) setBusy(false)
     }
   }
 
@@ -110,6 +135,86 @@ export default function UploadPage() {
       <PageHeader title="Upload chat" description="Isi mapping dan unggah chat. AI akan memetakan tipe entitas dan relasi secara otomatis.">
         <Stepper active={0} />
       </PageHeader>
+
+      <Card className="space-y-4 p-6">
+        <div className="space-y-1.5">
+          <CardTitle>Tujuan knowledge graph</CardTitle>
+          <CardDescription>Pilih tempat menyimpan knowledge dari chat sebelum mengunggah.</CardDescription>
+        </div>
+        <fieldset disabled={busy || creating} className="grid gap-3 sm:grid-cols-2">
+          <legend className="sr-only">Tujuan upload</legend>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border p-3">
+            <input
+              type="radio"
+              name="upload-target"
+              checked={targetMode === 'existing'}
+              onChange={() => setTargetMode('existing')}
+            />
+            <span className="text-sm font-medium">Tambahkan ke KG yang ada</span>
+          </label>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border p-3">
+            <input
+              type="radio"
+              name="upload-target"
+              checked={targetMode === 'new'}
+              onChange={() => {
+                setTargetMode('new')
+                setParams({})
+                setCreateError(null)
+                setCreateOpen(true)
+              }}
+            />
+            <span className="text-sm font-medium">Buat KG baru</span>
+          </label>
+        </fieldset>
+        {targetMode === 'existing' && (
+          <SelectField
+            label="Knowledge graph tujuan"
+            value={kgInfo ? kg : ''}
+            placeholder={kgs.loading ? 'Memuat KG…' : 'Pilih knowledge graph'}
+            disabled={busy || creating || kgs.loading || !kgs.data?.length}
+            onChange={(value) => setParams({ kg: value })}
+            options={(kgs.data ?? []).map((k) => ({ value: k.id, label: k.name }))}
+          />
+        )}
+        {targetMode === 'new' && (
+          <Button
+            variant="outline"
+            disabled={busy || creating}
+            onClick={() => {
+              setCreateError(null)
+              setCreateOpen(true)
+            }}
+          >
+            <Plus /> Buat knowledge graph
+          </Button>
+        )}
+        {kgs.error && (
+          <div role="alert" className="text-destructive flex flex-wrap items-center gap-2 text-sm">
+            <p>Gagal memuat KG: {kgs.error}</p>
+            <Button variant="outline" size="sm" onClick={() => void kgs.reload()}>Coba lagi</Button>
+          </div>
+        )}
+        {kg && kgs.data && !kgInfo && (
+          <p role="alert" className="text-destructive text-sm">KG tujuan tidak ditemukan. Pilih KG lain atau buat KG baru.</p>
+        )}
+        {!kgs.data?.length && !kgs.loading && !kgs.error && (
+          <p className="text-muted-foreground text-sm">Belum ada KG. Pilih “Buat KG baru” untuk memulai.</p>
+        )}
+        {kgInfo && (
+          <div className="bg-muted space-y-1 rounded-md border p-3 text-sm">
+            <p className="font-medium">Tujuan: {kgInfo.name}</p>
+            <p className="text-muted-foreground">
+              {kgInfo.has_draft
+                ? 'Knowledge baru ditambahkan ke draft yang tersedia.'
+                : kgInfo.latest
+                  ? `Draft dibuat dari v${kgInfo.latest}, lalu knowledge baru ditambahkan.`
+                  : 'Knowledge baru mengisi draft kosong.'}{' '}
+              Perubahan dipublikasikan setelah commit.
+            </p>
+          </div>
+        )}
+      </Card>
 
       <div className="flex flex-1 flex-col gap-4 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-5">
@@ -121,7 +226,7 @@ export default function UploadPage() {
             <FileDropzone
               onFiles={(files) => {
                 const f = files[0]
-                if (!f) return
+                if (!f || busy || creating) return
                 setFile(f)
                 void send(f)
               }}
@@ -183,19 +288,9 @@ export default function UploadPage() {
 
         <Card className="flex shrink-0 flex-col gap-4 p-6 lg:w-80 xl:w-[380px]">
           <div className="space-y-1.5">
-            <CardTitle>Tujuan & mapping</CardTitle>
-            <CardDescription>Ke KG mana hasil ekstraksi masuk</CardDescription>
+            <CardTitle>Mapping chat</CardTitle>
+            <CardDescription>Atur nama peserta dan model untuk ekstraksi</CardDescription>
           </div>
-          <SelectField
-            label="Knowledge graph"
-            value={kg}
-            onChange={(v) => {
-              setParams({ kg: v })
-              setPreview(null)
-            }}
-            options={(kgs.data ?? []).map((k) => ({ value: k.id, label: k.name }))}
-          />
-          {!kgs.data?.length && !kgs.loading && <p className="text-muted-foreground text-xs">Belum ada KG. Buat dulu di halaman Knowledge Graphs.</p>}
           <Field label='Nama pemilik akun ("Anda")'>
             <Input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="mis. Pemilik" className="w-full" />
           </Field>
@@ -234,7 +329,7 @@ export default function UploadPage() {
             <p className="text-muted-foreground mt-2 text-xs">Ubah hanya jika tanggal atau waktu pada preview tidak sesuai.</p>
           </details>
           {file && (
-            <Button variant="outline" size="sm" disabled={busy} onClick={() => send()}>
+            <Button variant="outline" size="sm" disabled={busy || creating || !kgInfo} onClick={() => send()}>
               <RefreshCw /> Terapkan mapping
             </Button>
           )}
@@ -242,19 +337,44 @@ export default function UploadPage() {
             <Button variant="outline" size="sm" onClick={() => navigate('/kg')}>
               Batal
             </Button>
-            <Button size="sm" disabled={!preview || busy || !model || !health.data?.llm || !!preview.duplicate_extractions.length} onClick={mapWithAi}>
+            <Button size="sm" disabled={!preview || !kgInfo || busy || creating || !model || !health.data?.llm || !!preview.duplicate_extractions.length} onClick={mapWithAi}>
               <Sparkles /> {busy ? 'Memulai AI…' : 'Petakan dengan AI'}
             </Button>
           </div>
         </Card>
       </div>
 
+      <NewKgDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        busy={creating}
+        confirmLabel="Buat & gunakan KG"
+        error={createError}
+        onCreate={async ({ id, name, description }) => {
+          if (creating) return
+          setCreating(true)
+          setCreateError(null)
+          try {
+            const created = await api.createKg(name, description, id)
+            kgs.setData((items) => [...(items ?? []), created])
+            setParams({ kg: created.id })
+            setCurrentKg(created.id)
+            setCreateOpen(false)
+            toast.success(`KG "${created.name}" dibuat`, { description: 'KG dipilih sebagai tujuan upload.' })
+          } catch (e) {
+            setCreateError(errorText(e))
+          } finally {
+            setCreating(false)
+          }
+        }}
+      />
+
       <ConfirmDialog
         open={duplicateOpen}
         onOpenChange={(open) => {
           setDuplicateOpen(open)
           if (!open) {
-            setPreview(null)
+            setUploaded(null)
             setFile(null)
             setDuplicateTarget('')
           }

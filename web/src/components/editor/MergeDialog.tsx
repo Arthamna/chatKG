@@ -18,7 +18,6 @@ interface MergeDialogProps {
 
 const degree = (g: GraphData, id: string) => g.edges.filter((e) => e.source === id || e.target === id).length
 
-/** B3 — merge entities (LightRAG MergeDialog): source facts move to the target. */
 export default function MergeDialog({ open, onOpenChange, source, graph, busy, onMerge }: MergeDialogProps) {
   const candidates = useMemo(() => {
     const others = graph.nodes.filter((n) => n.id !== source.id)

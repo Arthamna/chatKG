@@ -15,7 +15,7 @@ function Navigation({ mobile = false }: { mobile?: boolean }) {
   const query = encodedKg ? `?kg=${encodedKg}` : ''
   const tabs = [
     { label: 'Dashboard', to: '/kg', end: true },
-    { label: 'Upload', to: `/upload${query}` },
+    { label: 'Upload', to: '/upload' },
     { label: 'Graph Editor', to: encodedKg ? `/kg/${encodedKg}/graph` : '/kg?pick=graph', pick: !kg },
     { label: 'Versions', to: encodedKg ? `/kg/${encodedKg}/versions` : '/kg?pick=versions', pick: !kg },
     { label: 'Ask KG', to: `/ask${query}` }
@@ -75,9 +75,9 @@ export default function AppHeader({ theme, onToggleTheme }: AppHeaderProps) {
             <SheetContent side="left" className="bg-background gap-6 pt-6">
               <div className="flex items-center gap-2 pr-8">
                 <WorkspaceMark />
-                <SheetTitle className="font-bold">Knowledge Chat</SheetTitle>
+                <SheetTitle className="font-bold">chatKG</SheetTitle>
               </div>
-              <SheetDescription className="sr-only">Halaman Knowledge Workspace</SheetDescription>
+              <SheetDescription className="sr-only">Navigasi chatKG</SheetDescription>
               <Navigation mobile />
               <div className="border-divider mt-auto flex flex-wrap items-center justify-between gap-2 border-t pt-3">
                 <p className="text-muted-foreground text-sm">{status}</p>
@@ -89,7 +89,7 @@ export default function AppHeader({ theme, onToggleTheme }: AppHeaderProps) {
 
         <Link to="/kg" className="flex items-center gap-2 rounded-md font-bold whitespace-nowrap focus-visible:outline-2">
           <WorkspaceMark />
-          Knowledge Chat
+          chatKG
         </Link>
 
         <div className="flex items-center justify-end gap-1">

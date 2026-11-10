@@ -54,9 +54,6 @@ export function AssistantMessage({ kg, kgLabel, result }: { kg: string; kgLabel:
               <li key={r.n} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 <span className="text-link font-semibold">[{r.n}]</span>
                 <span className="font-medium wrap-anywhere">{r.fact}</span>
-                <span className="text-muted-foreground">
-                  {r.invalid_at ? `berlaku ${when(r.valid_at)} – ${when(r.invalid_at)}` : `berlaku sejak ${when(r.valid_at)}`}
-                </span>
               </li>
             ))}
           </ol>

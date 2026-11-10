@@ -29,21 +29,17 @@ def sample_episodes(episodes) -> list[dict]:
     samples = []
     for index in indices:
         ep = episodes[index]
-        lines, length = [], 0
-        for line in ep.body.splitlines():
-            if length + len(line) + 1 > 1500:
-                break
-            lines.append(line)
-            length += len(line) + 1
-        if lines:
-            samples.append({'episode': ep.name, 'date': ep.start_local.isoformat(), 'body': '\n'.join(lines)})
+        # Compact messages may exceed the sample budget on a single line.
+        body = ep.body[:1500].strip()
+        if body:
+            samples.append({'episode': ep.name, 'date': ep.start_local.isoformat(), 'body': body})
     return samples
 
 
 async def discover_schema(llm, prepared, baseline: Ontology, *, model: str | None = None) -> tuple[Ontology, int]:
     samples = sample_episodes(prepared.episodes)
     if not samples:
-        raise ValueError('Tidak ada cuplikan teks yang dapat dipetakan; tambahkan teks dengan baris lebih pendek')
+        raise ValueError('Tidak ada cuplikan teks yang dapat dipetakan')
     content = json.dumps(
         {
             'participants': prepared.parsed.participants,

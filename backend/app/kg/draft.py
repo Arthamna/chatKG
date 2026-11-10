@@ -1,11 +1,6 @@
 """Draft operations: review list (UI A6), review actions, manual edits (UI B1–B5)
 and the graph view for the web viewer. Committed versions are read-only; every
 write here checks that the target lives in ``kg_<kg>__draft``.
-
-Graphiti's ``save()`` replaces all properties (``SET n = $data``) and
-``get_by_uuid`` does not load vectors, so edits load the embedding first and
-re-embed when the text changes. ``origin_uuid`` survives because Graphiti keeps
-unknown properties in ``attributes``.
 """
 
 from __future__ import annotations
@@ -439,7 +434,6 @@ async def update_edge(
 async def graph_view(
     driver: GraphDriver, kg_id: str, version: str | int | None = 'draft', limit: int = 500
 ) -> dict[str, Any]:
-    """Nodes + facts of one version for the sigma viewer; draft nodes carry a change mark."""
     group = resolve_group(kg_id, version)
     node_rows = await _q(
         driver,

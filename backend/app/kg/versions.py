@@ -1,20 +1,3 @@
-"""Whole-copy versioning on top of Graphiti groups (design/backend-pipeline.md §6).
-
-Every committed version is a full copy of the graph under ``kg_<kg>__v<n>``; edits
-and ingests go into ``kg_<kg>__draft``. Copies get **new uuids**: Graphiti looks
-nodes and edges up by ``uuid`` without a ``group_id`` filter, so duplicated uuids
-across groups would break edits. ``origin_uuid`` keeps the identity across
-versions and drives :func:`diff`.
-
-uuid references that must be remapped when copying:
-- ``RELATES_TO.source_node_uuid`` / ``target_node_uuid`` (entity endpoints)
-- ``RELATES_TO.episodes`` (episode uuids the fact came from)
-- ``Episodic.entity_edges`` (fact uuids extracted from the episode)
-
-Metadata nodes (``:KnowledgeGraph``, ``:Version``) carry no ``group_id``, so they
-never mix with Graphiti data.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -79,14 +62,12 @@ async def group_stats(driver: GraphDriver, group_id: str) -> dict[str, int]:
 
 
 async def copy_group(driver: GraphDriver, src: str, dst: str) -> dict[str, int]:
-    """Copy all Graphiti data of ``src`` into the empty group ``dst`` with new uuids."""
     if src == dst:
         raise ValueError('src and dst must differ')
     existing = await group_stats(driver, dst)
     if existing['nodes'] or existing['episodes']:
         raise ValueError(f'target group {dst} is not empty')
 
-    # 1. Entity and Episodic nodes, labels included (dynamic labels: Neo4j >= 5.26).
     await _q(
         driver,
         'MATCH (n {group_id: $src}) WHERE n:Entity OR n:Episodic '
@@ -370,7 +351,6 @@ def resolve_group(kg_id: str, version: str | int | None) -> str:
 
 
 def _plain(value: Any) -> Any:
-    """Neo4j temporal values -> ISO strings, so they compare and serialise."""
     if hasattr(value, 'iso_format'):
         return value.iso_format()
     if hasattr(value, 'isoformat'):

@@ -1,14 +1,3 @@
-"""Request/token budget for Groq's per-model rate limits (RPM, TPM, RPD, TPD).
-
-The free tier allows roughly 1k requests and 200k tokens per day per model, and
-Graphiti makes several calls per episode. Instead of failing, ``acquire`` waits
-until the sliding window has room again, which can mean waiting until the next
-day. Usage is persisted to a JSON file so a restarted worker keeps counting.
-
-One process should own a state file. The API and worker will share it through
-Redis later (design/backend-pipeline.md §4.4).
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -145,12 +134,10 @@ class QuotaBudget:
                 await self._sleep(min(wait, MAX_SLEEP_CHUNK) + 0.05)
 
     def settle(self, reservation: list[float], actual_tokens: int) -> None:
-        """Replace the reserved estimate with the tokens Groq actually billed."""
         reservation[1] = float(actual_tokens)
         self._save()
 
     def block(self, model: str, seconds: float) -> None:
-        """After a 429, stop sending to ``model`` for ``seconds`` (Groq's retry-after)."""
         until = self._clock() + max(1.0, seconds)
         self._blocked[model] = max(self._blocked.get(model, 0.0), until)
         self._save()

@@ -132,6 +132,23 @@ async def test_discovery_semantic_repair_and_grounded_input():
     assert 'existing_schema' in messages[1].content and 'Produk ini tersedia?' in messages[1].content
 
 
+async def test_discovery_includes_long_compacted_message_without_truncating_full_episode():
+    body = '[11:42] Ana: parameter ' + 'power_t ' * 500
+    prepared = SimpleNamespace(
+        parsed=SimpleNamespace(participants=['Ana'], tz='Asia/Jakarta'),
+        episodes=[SimpleNamespace(name='ep', start_local=datetime(2026, 11, 5), body=body)],
+    )
+    llm = SimpleNamespace(generate_response=AsyncMock(return_value=example_schema()))
+
+    _, count = await discover_schema(llm, prepared, Ontology())
+
+    assert count == 1
+    sampled = sample_episodes(prepared.episodes)
+    assert sampled[0]['body'] == body[:1500].strip()
+    assert sampled[0]['body'] in llm.generate_response.call_args.args[0][1].content
+    assert prepared.episodes[0].body == body
+
+
 async def test_ingest_passes_reviewed_schema_and_resumes_completed_episodes():
     schema = Ontology.model_validate(example_schema())
     graphiti = SimpleNamespace(

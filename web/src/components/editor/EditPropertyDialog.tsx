@@ -15,7 +15,6 @@ interface EditPropertyDialogProps {
   onSave: (value: string) => void
 }
 
-/** B2 — edit one property of a draft entity (LightRAG PropertyEditDialog). */
 export default function EditPropertyDialog({ open, onOpenChange, entity, entityType, propKey, current, busy, onSave }: EditPropertyDialogProps) {
   const [value, setValue] = useState(current)
 

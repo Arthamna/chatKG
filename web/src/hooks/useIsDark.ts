@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from 'react'
 
-/** Tracks the `.dark` class on <html> so canvas renderers (sigma) can follow the theme. */
 export function useIsDark() {
   return useSyncExternalStore(
     (onChange) => {

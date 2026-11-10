@@ -1,4 +1,3 @@
-/** REST client for backend/app/api.py (Vite proxies /api to :8000). */
 
 export class ApiError extends Error {
   constructor(

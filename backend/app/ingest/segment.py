@@ -1,5 +1,3 @@
-"""Group parsed messages into Graphiti episodes (design/backend-pipeline.md §4.3)."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,7 +11,7 @@ class Episode:
     seq: int
     name: str
     body: str
-    reference_time: datetime  # UTC, tz-aware (Graphiti requirement)
+    reference_time: datetime
     start_local: datetime
     end_local: datetime
     message_count: int
@@ -31,7 +29,7 @@ def render_line(m: Message) -> str | None:
             return None
         body = token
     else:
-        body = m.text
+        body = ' '.join(m.text.split())
     if m.forwarded:
         body = f'(meneruskan) {body}'
     return f'[{m.ts_local:%H:%M}] {m.sender}: {body}'

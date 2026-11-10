@@ -1,5 +1,3 @@
-"""Run episodes through Graphiti into one group_id, resumably (design §4.4)."""
-
 from __future__ import annotations
 
 import logging

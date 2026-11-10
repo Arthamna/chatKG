@@ -1,16 +1,3 @@
-"""Groq client for Graphiti, built for the free tier.
-
-Differences from ``graphiti_core.llm_client.groq_client.GroqClient``:
-- routes ``ModelSize.small`` prompts to ``small_model`` (upstream always uses
-  ``model``), which also spreads load over two per-model quotas,
-- waits on a persistent :class:`QuotaBudget` before each call and records the
-  tokens Groq actually billed,
-- on HTTP 429 it honours ``retry-after`` and retries itself. Upstream raises
-  ``RateLimitError``, and Graphiti's tenacity wrapper gives up after 4 attempts,
-  which is far too few for a daily quota,
-- passes ``reasoning_effort`` for gpt-oss models (fewer hidden reasoning tokens).
-"""
-
 from __future__ import annotations
 
 import contextvars
@@ -46,13 +33,6 @@ class SchemaOutputError(ValueError):
 
 
 def _declared_fields_only(data: typing.Any, model: type[BaseModel]) -> typing.Any:
-    """Drop top-level keys the response model does not declare.
-
-    gpt-oss often answers with the JSON schema it was shown *plus* the values
-    (``{"title": "Course", "properties": {...}, "code": "ML"}``). Pydantic ignores
-    the extras, but Graphiti stores every returned key as a node attribute, and
-    Neo4j rejects map-valued properties.
-    """
     if not isinstance(data, dict) or model.model_config.get('extra') == 'allow':
         return data
     allowed = set(model.model_fields)
@@ -75,7 +55,6 @@ def _retry_after(err: groq.RateLimitError) -> float:
             try:
                 return float(value)
             except ValueError:
-                # Groq reset headers look like "2m59.56s" / "7.66s"
                 total, num = 0.0, ''
                 for ch in value:
                     if ch.isdigit() or ch == '.':

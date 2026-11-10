@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from app.ingest import detect_date_order, looks_like_whatsapp_ios, parse_whatsapp, segment_episodes
+from app.ingest.prepare import prepare_source
 
 FIXTURE = Path(__file__).parent / 'fixtures' / 'wa_ios_sample.txt'
 ALIASES = {'Leon TC 24': 'Leon'}
@@ -81,6 +82,34 @@ def test_date_order_rules():
     assert detect_date_order([(12, 25), (12, 26)]) == 'MDY'
     # 2/11 -> 3/11: D/M steps one day, M/D steps one month
     assert detect_date_order([(2, 11), (3, 11), (4, 11)]) == 'DMY'
+
+
+def test_prepare_multiline_export_compacts_only_episode_text():
+    body = 'sama ini :\nlog regression :\n- dual\n- tol\n- intercept_scaling\n' + '- power_t\n' * 60
+    text = (
+        'Pesan dan telepon terenkripsi secara end-to-end.\n'
+        f'[10/20/26, 11:42:17 AM] Anda: {body}'
+        '[10/20/26, 12:01:19 PM] Leon TC 24: udah\n'
+    )
+
+    assert looks_like_whatsapp_ios(text)
+    prepared = prepare_source(text, filename='chat.txt', owner='Pemilik', aliases=ALIASES)
+
+    assert prepared.parsed.date_order == 'MDY'
+    assert len(prepared.parsed.messages) == 2
+    assert prepared.parsed.messages[0].text == body.rstrip()
+    assert prepared.parsed.messages[0].ts_local.isoformat() == '2026-10-20T11:42:17+07:00'
+    assert prepared.episodes[0].body.splitlines() == [
+        f'[11:42] Pemilik: {" ".join(body.split())}',
+        '[12:01] Leon: udah',
+    ]
+    assert prepared.episodes[0].line_count == 2
+
+
+@pytest.mark.parametrize('text', ['', 'hello\nworld\n', '[10/20/26, 11:42:17 AM] tanpa pengirim'])
+def test_prepare_rejects_text_without_message_headers(text):
+    with pytest.raises(ValueError, match='File tidak dikenali'):
+        prepare_source(text, filename='chat.txt', owner='Pemilik')
 
 
 def test_invisible_chars_multiline_and_edited():

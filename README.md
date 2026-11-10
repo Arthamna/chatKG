@@ -1,4 +1,4 @@
-# Chat Knowledge Graph
+# chatKG
 
 Turn WhatsApp exports into editable, versioned knowledge graphs and ask questions about them. The app uses FastAPI, React, Graphiti, OpenRouter free models, CPU-hosted embedding models, and a local Neo4j container.
 

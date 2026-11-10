@@ -62,7 +62,6 @@ export const isStale = (e: { invalid_at?: string | null; expired_at?: string | n
 
 type LayoutNode = Omit<GraphNodeData, 'x' | 'y'>
 
-/** ForceAtlas2 layout (as in LightRAG's GraphViewer), deterministic from a circular start. */
 export function layoutGraph(nodes: LayoutNode[], edges: GraphEdgeData[]): GraphData {
   const g = new Graph({ multi: true })
   for (const n of nodes) if (!g.hasNode(n.id)) g.addNode(n.id)
@@ -73,7 +72,6 @@ export function layoutGraph(nodes: LayoutNode[], edges: GraphEdgeData[]): GraphD
     forceAtlas2.assign(g, { iterations: 200, settings: { ...forceAtlas2.inferSettings(g), barnesHutOptimize: g.order > 300 } })
   }
   if (g.order > 1) {
-    // FA2 pulls linked pairs on top of each other; keep ~4% of the extent between nodes so dots and labels stay readable
     const xs = g.mapNodes((_, a) => a.x as number), ys = g.mapNodes((_, a) => a.y as number)
     const extent = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) || 100
     g.forEachNode((id) => g.setNodeAttribute(id, 'size', extent * 0.02))

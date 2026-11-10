@@ -372,7 +372,7 @@ class JobRunner:
             resume_at=None,
             retry_reason=None,
         )
-        await self._log(job_id, f'{len(episodes)} episode dari {src["filename"]} → {group_id}')
+        await self._log(job_id, f'{len(episodes)} episode dari {src["filename"]}')
         if saved:
             await self._log(job_id, f'melanjutkan dari checkpoint; {saved}/{len(episodes)} episode sudah tersimpan')
 

@@ -1,5 +1,3 @@
-"""Source proposals and immutable job snapshots, stored as JSON Neo4j properties."""
-
 from __future__ import annotations
 
 import hashlib

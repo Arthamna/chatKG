@@ -23,7 +23,6 @@ Kamu menjawab pertanyaan berdasarkan knowledge graph yang diekstrak dari chat.
 - Jangan menebak tanggal yang ditandai tidak pasti."""
 
 NO_ANSWER = 'Tidak ada di KG versi ini.'
-# gpt-oss on Groq occasionally returns an empty `content` (output spent in reasoning).
 EMPTY_ANSWER_RETRIES = 2
 
 
@@ -105,9 +104,6 @@ async def ask(
 
     refs = [Reference(i, e.uuid, e.fact, _iso(e.valid_at), _iso(e.invalid_at)) for i, e in enumerate(results.edges, 1)]
     lines = [f'[{r.n}] {r.fact} (valid {r.valid_at or "?"} – {r.invalid_at or "sekarang"})' for r in refs]
-    # Node summaries are rewritten as later episodes arrive and carry no validity
-    # window, so they would leak facts from after `point_in_time`. Only the
-    # time-filtered facts are used for point-in-time questions.
     nodes = [] if point_in_time else [f'- {n.name}: {n.summary}' for n in results.nodes[:5] if n.summary]
     if not lines and not nodes:
         return Answer(NO_ANSWER, [], int((time.monotonic() - t0) * 1000), group_id)

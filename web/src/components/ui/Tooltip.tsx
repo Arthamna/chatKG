@@ -33,10 +33,6 @@ const TooltipContent = React.forwardRef<
   }, [children]);
 
   return (
-    // Portalled on purpose: the site header is `sticky z-50`, so it owns a
-    // stacking context. An in-place tooltip is trapped inside it and loses to
-    // any portalled z-50 overlay that comes later in the DOM (the settings
-    // popover), however high its own z-index is.
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
         ref={ref}

@@ -1,7 +1,6 @@
 import type { GraphView } from '@/lib/api'
 import { layoutGraph, type GraphData } from '@/lib/graph'
 
-/** API graph view -> laid-out sigma data. Stale facts (invalid/expired) get the 'old' tone. */
 export function viewToGraph(v: GraphView): GraphData {
   return layoutGraph(
     v.nodes.map((n) => ({

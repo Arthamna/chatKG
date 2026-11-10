@@ -14,7 +14,6 @@ import { useCurrentKg } from '@/hooks/useCurrentKg'
 import { ApiError, api, errorText } from '@/lib/api'
 import { localInputToIso } from '@/lib/time'
 
-/** D1 / D2 — Ask KG: Graphiti search on one version + Groq answer with citations. */
 export default function AskPage() {
   const [params] = useSearchParams()
   const [currentKg, setCurrentKg] = useCurrentKg()

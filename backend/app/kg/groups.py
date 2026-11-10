@@ -1,10 +1,3 @@
-"""Graphiti group_id naming for KG versions (whole copy per version).
-
-Graphiti only accepts ``[A-Za-z0-9_-]`` in a group_id, so the separator is a
-double underscore and KG ids are limited to lowercase letters, digits and
-single dashes, which keeps ``kg_<kg>__<part>`` unambiguous.
-"""
-
 from __future__ import annotations
 
 import re

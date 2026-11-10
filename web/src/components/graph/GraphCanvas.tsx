@@ -25,7 +25,7 @@ function buildGraph(data: GraphData) {
   for (const n of data.nodes) {
     g.addNode(n.id, {
       x: n.x,
-      y: -n.y, // screen-style coordinates grow downward, sigma's grow upward
+      y: -n.y,
       label: n.label,
       size: 9,
       color: n.dimmed ? DIMMED : typeColor(n.type),
@@ -90,7 +90,6 @@ function GraphBehavior({ data, selectedId, onSelect, typeFilter = 'all', dark, e
       edgeLabelColor: { color: dark ? '#b6b7af' : '#4d4f46' },
       defaultEdgeColor: edgeColor,
       renderEdgeLabels: edgeLabels,
-      // small graphs: show every label (sigma's label grid otherwise hides neighbours' labels)
       labelDensity: data.nodes.length <= 80 ? 10 : 1,
       labelGridCellSize: data.nodes.length <= 80 ? 40 : 100,
       nodeReducer: (node, attrs) => {
@@ -124,11 +123,9 @@ interface GraphCanvasProps extends GraphBehaviorProps {
   children?: ReactNode
 }
 
-/** Sigma and Graphology canvas. Overlays go in `children`. */
 export default function GraphCanvas({ className, children, ...behavior }: GraphCanvasProps) {
   return (
     <SigmaContainer
-      // facts can link the same pair twice (e.g. ASK_REMINDER + RELATES_TO); loadGraph imports into this instance
       graph={MultiGraph}
       className={cn('bg-muted! relative size-full! overflow-hidden', className)}
       settings={{

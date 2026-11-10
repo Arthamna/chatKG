@@ -1,5 +1,3 @@
-"""OpenRouter free-only Graphiti client with a shared request quota."""
-
 from __future__ import annotations
 
 import asyncio
@@ -22,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class IncompleteCompletion(ValueError):
-    """OpenRouter did not return a complete response."""
+    pass
 
 
 def free_model(model: str) -> str:

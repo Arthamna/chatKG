@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, Database } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 import Input from '@/components/ui/Input'
@@ -16,21 +16,32 @@ interface NewKgDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   busy?: boolean
+  confirmLabel?: string
+  error?: string | null
   onCreate: (kg: { id: string; name: string; description: string }) => void
 }
 
 /** A2 — "Buat knowledge graph": name, description, group_id preview. */
-export default function NewKgDialog({ open, onOpenChange, busy, onCreate }: NewKgDialogProps) {
+export default function NewKgDialog({
+  open,
+  onOpenChange,
+  busy,
+  confirmLabel = 'Buat & upload chat',
+  error,
+  onCreate
+}: NewKgDialogProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
 
   return (
     <ConfirmDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(value) => {
+        if (!busy) onOpenChange(value)
+      }}
       title="Buat knowledge graph"
       description="Knowledge Graph yang menyimpan chat."
-      confirmLabel={busy ? 'Membuat…' : 'Buat & upload chat'}
+      confirmLabel={busy ? 'Membuat…' : confirmLabel}
       confirmIcon={<ArrowRight />}
       confirmDisabled={busy || !name.trim()}
       onConfirm={() => onCreate({ id: slug(name), name: name.trim(), description })}
@@ -43,6 +54,9 @@ export default function NewKgDialog({ open, onOpenChange, busy, onCreate }: NewK
         <span className="text-sm font-medium">Deskripsi</span>
         <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opsional" rows={3} />
       </label>
+      {error && (
+        <p role="alert" className="bg-destructive-subtle text-destructive rounded-md p-3 text-sm">{error}</p>
+      )}
     </ConfirmDialog>
   )
 }

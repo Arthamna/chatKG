@@ -4,7 +4,6 @@ import { X } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
-/** Side panel built on the Dialog primitive — used for PropertiesView / QuerySettings below lg. */
 const Sheet = DialogPrimitive.Root
 const SheetTrigger = DialogPrimitive.Trigger
 const SheetClose = DialogPrimitive.Close

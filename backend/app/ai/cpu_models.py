@@ -1,14 +1,3 @@
-"""Embedding and reranking on CPU with sentence-transformers.
-
-Defaults are sized for a host with 4–8 GB free RAM:
-- embedder ``intfloat/multilingual-e5-small``: 118M params, 384 dims, ~0.5 GB
-- reranker ``cross-encoder/mmarco-mMiniLMv2-L12-H384-v1``: 118M params, multilingual
-
-Graphiti's built-in ``BGERerankerClient`` hard-codes ``bge-reranker-v2-m3``
-(568M params, ~2.3 GB), which is why the reranker is a separate class here.
-Models load lazily on first use so the API can start without them.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -93,9 +82,6 @@ class CrossEncoderReranker(CrossEncoderClient):
         return self._model
 
     def _predict(self, pairs: list[list[str]]) -> list[float]:
-        # Recent sentence-transformers return raw logits (Identity activation) for
-        # mmarco models. Squash to 0..1 so Graphiti's reranker_min_score=0 does not
-        # silently drop every passage with a negative logit.
         logits = self._get_model().predict(pairs, show_progress_bar=False)
         return [1.0 / (1.0 + math.exp(-float(x))) for x in logits]
 

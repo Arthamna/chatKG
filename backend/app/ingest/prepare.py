@@ -34,7 +34,7 @@ def prepare_source(
     max_messages: int = 50,
 ) -> PreparedSource:
     if not looks_like_whatsapp_ios(text):
-        raise ValueError('File tidak dikenali sebagai export WhatsApp (format iOS "[tanggal, jam] Nama: pesan").')
+        raise ValueError('File tidak dikenali sebagai export WhatsApp (format : "[tanggal, jam] Nama: pesan").')
     parsed = parse_whatsapp(text, owner_name=owner, aliases=aliases or {}, tz=tz, date_order=date_order)
     if not parsed.messages:
         raise ValueError('Tidak ada pesan yang terbaca di file ini.')

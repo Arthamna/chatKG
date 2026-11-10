@@ -1,5 +1,3 @@
-"""Graphiti wiring: OpenRouter/Groq generation, CPU vectors, Neo4j."""
-
 from __future__ import annotations
 
 import logging
@@ -18,9 +16,6 @@ from app.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
-# Graphiti's default tells the LLM to output English unless the user wrote full
-# sentences, so short Indonesian chat turned into English facts. Graphiti documents
-# overriding this function; generate_response looks it up on the module at call time.
 INDONESIAN_OUTPUT = (
     '\n\nTulis semua fakta, ringkasan, dan nama entitas dalam Bahasa Indonesia, '
     'mengikuti bahasa chat. Pertahankan nama orang dan singkatan apa adanya.'
@@ -70,7 +65,6 @@ def build_generation(s: Settings, budget: QuotaBudget):
 
 def build_llm(s: Settings, groq_client: BudgetedGroqClient | OpenRouterClient) -> LLMClient:
     if s.llm_provider == 'groq' and s.entity_extractor == 'gliner2':
-        # Loads weights synchronously; call before heavy async work starts.
         from graphiti_core.llm_client.gliner2_client import GLiNER2Client
 
         return GLiNER2Client(
@@ -99,8 +93,6 @@ def build_graphiti(
     on_quota_wait: WaitCallback | None = None,
     with_llm: bool = True,
 ) -> tuple[Graphiti, BudgetedGroqClient | OpenRouterClient | None]:
-    """Create a Graphiti instance. ``with_llm=False`` is enough for search-only use
-    without an LLM key (search does not call the LLM)."""
     s = s or get_settings()
     if not s.neo4j_password:
         raise RuntimeError('NEO4J_PASSWORD is empty: copy .env.example to .env and set it')
@@ -121,8 +113,6 @@ def build_graphiti(
 
 
 class _NoLLM(LLMClient):
-    """Placeholder so Graphiti does not build its default OpenAI client."""
-
     def __init__(self) -> None:
         super().__init__(LLMConfig(model='none'), cache=False)
 

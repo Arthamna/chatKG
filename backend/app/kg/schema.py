@@ -1,5 +1,3 @@
-"""Validated, serializable ontologies shared by discovery, review and Graphiti."""
-
 from __future__ import annotations
 
 import hashlib

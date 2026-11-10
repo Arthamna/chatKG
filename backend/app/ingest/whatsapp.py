@@ -180,9 +180,9 @@ def parse_whatsapp(
     return ParseResult(messages=messages, date_order=order, tz=tz, skipped_preamble=preamble)
 
 
-def looks_like_whatsapp_ios(text: str, sample: int = 50, threshold: float = 0.8) -> bool:
-    lines = [clean_line(x) for x in text.splitlines() if x.strip()][:sample]
-    if not lines:
-        return False
-    # The preamble line and multi-line continuations are tolerated below the threshold.
-    return sum(bool(LINE_RE.match(x)) for x in lines) / len(lines) >= threshold
+def looks_like_whatsapp_ios(text: str) -> bool:
+    """Recognize message headers without counting preamble or continuation lines.
+
+    Timestamp validity and date order are checked by ``parse_whatsapp``.
+    """
+    return any(LINE_RE.match(clean_line(line)) for line in text.splitlines())

@@ -17,14 +17,16 @@ interface SelectFieldProps {
   value: string
   onChange: (v: string) => void
   options: { value: string; label: string }[]
+  disabled?: boolean
+  placeholder?: string
 }
 
-export function SelectField({ label, value, onChange, options }: SelectFieldProps) {
+export function SelectField({ label, value, onChange, options, disabled, placeholder }: SelectFieldProps) {
   return (
     <Field label={label}>
-      <Select value={value} onValueChange={onChange}>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger aria-label={label}>
-          <SelectValue />
+          <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
           {options.map((o) => (

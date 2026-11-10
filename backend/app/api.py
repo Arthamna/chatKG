@@ -61,7 +61,7 @@ def create_app(build=_build, settings: Settings | None = None, ingest_fn=None) -
             await runner.stop()
             await graphiti.close()
 
-    app = FastAPI(title='Chat → KG API', lifespan=lifespan)
+    app = FastAPI(title='chatKG API', lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=['http://localhost:5173', 'http://localhost:4173'],
